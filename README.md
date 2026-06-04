@@ -57,7 +57,7 @@ homeassistant:
 
 Im aktuell vorliegenden Package lassen sich die externen Abhängigkeiten konkret nachvollziehen. Referenziert werden derzeit diese Quellen:
 
-- **`forecast_solar`** für die Forecast-Entitäten der drei PV-Flächen
+- **`forecast_solar`** für die Forecast-Entitäten der PV-Flächen
 - **`sma`** für Batterie-SOC sowie Lade-/Entladeleistung des SMA-Wechselrichters
 - **`pysmaplus`** für Netzbezug und Netzeinspeisung über den SHM2/EM
 - **`template`** für mindestens einen zusammengeführten Sensor `sensor.pv_produktion_gesamt`
