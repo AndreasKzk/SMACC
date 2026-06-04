@@ -55,6 +55,16 @@ homeassistant:
 
 ## Benötigte Integrationen
 
+Im aktuell vorliegenden Package lassen sich die externen Abhängigkeiten konkret nachvollziehen. Referenziert werden derzeit diese Quellen:
+
+- **`forecast_solar`** für die Forecast-Entitäten der drei PV-Flächen
+- **`sma`** für Batterie-SOC sowie Lade-/Entladeleistung des SMA-Wechselrichters
+- **`pysmaplus`** für Netzbezug und Netzeinspeisung über den SHM2/EM
+- **`template`** für mindestens einen zusammengeführten Sensor `sensor.pv_produktion_gesamt`
+- **`recorder`** als Datenbasis für historische Werte
+- **`sql`** für den 3-Tage-Zeitschnitt
+- **`modbus`** für die eigentliche Ladefreigabe / Sperre
+
 ### Recorder
 
 Recorder ist Pflicht, weil SMACC historische Statistikdaten nutzt. Die 3-Tage-Logik greift auf die Kurzzeitstatistik von Home Assistant zu. Ohne Recorder fehlen diese Grundlagen.
@@ -67,9 +77,23 @@ Die SQL-Integration wird benötigt, um aus den Recorder-Daten Zeitfenster-Mittel
 
 Modbus ist erforderlich, wenn SMACC nicht nur anzeigen, sondern tatsächlich steuern soll. Das Package schreibt Register für Lade- und Entladefreigaben sowie Betriebsmodi.
 
-### PV-Forecast
+### Forecast.Solar
 
-SMACC braucht stündliche Forecast-Daten. Welche Integration diese liefert, ist egal – entscheidend ist, dass passende Forecast-Sensoren vorhanden sind.
+Im aktuellen Package stammen die Forecast-Werte konkret aus **Forecast.Solar** (`forecast_solar`). Verwendet werden drei getrennte Forecast-Quellen bzw. PV-Flächen.
+
+Wenn jemand statt Forecast.Solar eine andere Forecast-Integration nutzt, müssen die Forecast-Entitäten im Package entsprechend ersetzt werden.
+
+### SMA Integration
+
+Die Batterie-Entitäten stammen im aktuellen Stand direkt aus der **Home-Assistant-SMA-Integration** (`sma`), konkret vom Gerät **SMA SUNNY TRIPOWER 10.0 SE**.
+
+### PySMAPlus
+
+Netzbezug und Netzeinspeisung stammen im aktuellen Stand aus **PySMAPlus** (`pysmaplus`), konkret vom Gerät **SHM2/EM**.
+
+### Template
+
+Die Entität `sensor.pv_produktion_gesamt` stammt im aktuellen Stand aus einer **Template-Entität** (`template`). Auf anderen Anlagen kann das genauso ein nativer PV-Leistungssensor sein oder ein selbst gebauter Summensensor über mehrere Quellen.
 
 ## Benötigte Entitätsrollen
 
@@ -77,20 +101,20 @@ Die **konkreten Entity-IDs sind installationsabhängig**. Für andere Nutzer mü
 
 ### Pflichtrollen für die Kernlogik
 
-Folgende Informationen müssen in Home Assistant vorhanden sein:
+Folgende Informationen müssen in Home Assistant vorhanden sein. In Klammern steht jeweils, **woher sie im aktuellen Package konkret kommen**:
 
 | Rolle | Einheit | Beschreibung |
 |---|---:|---|
-| Batterie-SOC | % | aktueller Ladezustand der Batterie |
-| Batterie-Ladeleistung | W | aktuelle Ladeleistung |
-| Batterie-Entladeleistung | W | aktuelle Entladeleistung |
-| PV-Gesamtleistung | W | aktuelle gesamte PV-Erzeugung |
-| Netzbezug | W | aktuelle Leistung aus dem Netz |
-| Netzeinspeisung | W | aktuelle Leistung ins Netz |
+| Batterie-SOC | % | aktueller Ladezustand der Batterie (`sma`) |
+| Batterie-Ladeleistung | W | aktuelle Ladeleistung (`sma`) |
+| Batterie-Entladeleistung | W | aktuelle Entladeleistung (`sma`) |
+| PV-Gesamtleistung | W | aktuelle gesamte PV-Erzeugung (`template` im Beispiel) |
+| Netzbezug | W | aktuelle Leistung aus dem Netz (`pysmaplus`) |
+| Netzeinspeisung | W | aktuelle Leistung ins Netz (`pysmaplus`) |
 
 ### Pflichtrollen für Forecast und Zielzeit
 
-Zusätzlich braucht SMACC Forecast-Werte, mindestens für:
+Zusätzlich braucht SMACC Forecast-Werte. Im aktuellen Package kommen diese konkret aus **Forecast.Solar** und liegen pro PV-Fläche getrennt vor:
 
 | Rolle | Einheit | Beschreibung |
 |---|---:|---|
@@ -100,7 +124,13 @@ Zusätzlich braucht SMACC Forecast-Werte, mindestens für:
 | Forecast heute gesamt | kWh | gesamte erwartete PV-Energie heute |
 | Forecast morgen gesamt | kWh | gesamte erwartete PV-Energie morgen |
 
-Das Beispiel-Package rechnet mit mehreren PV-Flächen. Wenn ein anderes Setup nur eine oder zwei Forecast-Quellen hat, müssen die Templates entsprechend angepasst werden.
+Das Beispiel-Package rechnet konkret mit **drei** Forecast-Quellen bzw. PV-Flächen:
+
+- `sensor.energy_*`
+- `sensor.energy_*_2`
+- `sensor.energy_*_3`
+
+Wenn ein anderes Setup nur eine oder zwei Forecast-Quellen hat oder anders benannte Forecast-Entitäten liefert, müssen die Templates entsprechend angepasst werden.
 
 ### Optionale Rollen
 
@@ -113,6 +143,24 @@ Optional unterstützt SMACC zusätzlich EV-/Wallbox-Kontext, z. B.:
 - Zielwert für Batterie-Entladeleistung im EV-Kontext
 
 Diese Rollen sind nicht zwingend für die Grundfunktion, aber im aktuellen Package bereits berücksichtigt.
+
+## Konkret referenzierte Quell-Entitäten im aktuellen Stand
+
+Zur Nachvollziehbarkeit hier die extern referenzierten Kern-Entitäten des aktuellen Packages und ihre Herkunft:
+
+| Entität | Herkunft |
+|---|---|
+| `sensor.sn_3012402082_battery_soc_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
+| `sensor.sn_3012402082_battery_power_charge_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
+| `sensor.sn_3012402082_battery_power_discharge_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
+| `sensor.shm2_em_metering_power_absorbed` | `pysmaplus` → SHM2/EM |
+| `sensor.shm2_em_metering_power_supplied` | `pysmaplus` → SHM2/EM |
+| `sensor.pv_produktion_gesamt` | `template` |
+| `sensor.energy_current_hour`, `sensor.energy_next_hour`, `sensor.energy_production_today`, `sensor.energy_production_today_remaining`, `sensor.energy_production_tomorrow` | `forecast_solar` → PV-Fläche 1 |
+| gleiche Entitäten mit Suffix `_2` | `forecast_solar` → PV-Fläche 2 |
+| gleiche Entitäten mit Suffix `_3` | `forecast_solar` → PV-Fläche 3 |
+
+Genau diese Ableitung fehlte vorher in der README und gehört da sinnvollerweise rein.
 
 ## Modbus-Anbindung
 
