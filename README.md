@@ -55,15 +55,17 @@ homeassistant:
 
 ## Benötigte Integrationen
 
-Im aktuell vorliegenden Package lassen sich die externen Abhängigkeiten konkret nachvollziehen. Referenziert werden derzeit diese Quellen:
+Die ursprüngliche Referenz-Umgebung ließ sich auf diese Integrationen zurückführen. In der **anonymisierten Share-Version** sind die konkreten Entity-IDs daraus aber bewusst durch Platzhalter ersetzt:
 
-- **`forecast_solar`** für die Forecast-Entitäten der PV-Flächen
-- **`sma`** für Batterie-SOC sowie Lade-/Entladeleistung des SMA-Wechselrichters
-- **`pysmaplus`** für Netzbezug und Netzeinspeisung über den SHM2/EM
-- **`template`** für mindestens einen zusammengeführten Sensor `sensor.pv_produktion_gesamt`
+- **`forecast_solar`** für die Forecast-Werte der PV-Flächen im Referenz-Setup
+- **`sma`** für Batterie-SOC sowie Lade-/Entladeleistung im Referenz-Setup
+- **`pysmaplus`** für Netzbezug und Netzeinspeisung im Referenz-Setup
+- **`template`** für zusammengeführte Summensensoren im Referenz-Setup
 - **`recorder`** als Datenbasis für historische Werte
 - **`sql`** für den 3-Tage-Zeitschnitt
 - **`modbus`** für die eigentliche Ladefreigabe / Sperre
+
+Für andere Nutzer ist nicht entscheidend, ob exakt dieselben Integrationen verwendet werden. Entscheidend ist, dass die benötigten **Entitätsrollen** vorhanden sind und auf die Platzhalter im Package gemappt werden.
 
 ### Recorder
 
@@ -79,21 +81,21 @@ Modbus ist erforderlich, wenn SMACC nicht nur anzeigen, sondern tatsächlich ste
 
 ### Forecast.Solar
 
-Im aktuellen Package stammen die Forecast-Werte konkret aus **Forecast.Solar** (`forecast_solar`).
+Im Referenz-Setup stammen die Forecast-Werte aus **Forecast.Solar** (`forecast_solar`). Die Share-Version nutzt dafür bewusst anonyme Platzhalter wie `sensor.smacc_pv1_forecast_current_hour`.
 
-Wenn jemand statt Forecast.Solar eine andere Forecast-Integration nutzt, müssen die Forecast-Entitäten im Package entsprechend ersetzt werden.
+Wenn jemand statt Forecast.Solar eine andere Forecast-Integration nutzt, müssen diese Platzhalter einfach auf die passenden eigenen Forecast-Entitäten gemappt werden.
 
 ### SMA Integration
 
-Die Batterie-Entitäten stammen im aktuellen Stand direkt aus der **Home-Assistant-SMA-Integration** (`sma`), konkret vom Gerät **SMA SUNNY TRIPOWER 10.0 SE**.
+Im Referenz-Setup stammen Batterie-SOC sowie Lade-/Entladeleistung aus der **Home-Assistant-SMA-Integration** (`sma`). In der Share-Version wurden seriennummernhaltige Entity-IDs bewusst entfernt und durch generische Platzhalter ersetzt.
 
 ### PySMAPlus
 
-Netzbezug und Netzeinspeisung stammen im aktuellen Stand aus **PySMAPlus** (`pysmaplus`), konkret vom Gerät **SHM2/EM**.
+Im Referenz-Setup stammen Netzbezug und Netzeinspeisung aus **PySMAPlus** (`pysmaplus`). Auch diese Entitäten sind in der Share-Version anonymisiert.
 
 ### Template
 
-Die Entität `sensor.pv_produktion_gesamt` stammt im aktuellen Stand aus einer **Template-Entität** (`template`). Auf anderen Anlagen kann das genauso ein nativer PV-Leistungssensor sein oder ein selbst gebauter Summensensor über mehrere Quellen.
+Die gesamte PV-Leistung kann z. B. aus einer **Template-Entität** (`template`) stammen. In der Share-Version wird dafür der generische Platzhalter `sensor.smacc_pv_power_total` verwendet.
 
 ## Benötigte Entitätsrollen
 
@@ -124,11 +126,11 @@ Zusätzlich braucht SMACC Forecast-Werte. Im aktuellen Package kommen diese konk
 | Forecast heute gesamt | kWh | gesamte erwartete PV-Energie heute |
 | Forecast morgen gesamt | kWh | gesamte erwartete PV-Energie morgen |
 
-Das Beispiel-Package rechnet konkret mit **drei** Forecast-Quellen bzw. PV-Flächen:
+Das Beispiel-Package rechnet konkret mit **drei** Forecast-Quellen bzw. PV-Flächen. In der anonymisierten Version heißen diese Platzhalter:
 
-- `sensor.energy_*`
-- `sensor.energy_*_2`
-- `sensor.energy_*_3`
+- `sensor.smacc_pv1_forecast_*`
+- `sensor.smacc_pv2_forecast_*`
+- `sensor.smacc_pv3_forecast_*`
 
 Wenn ein anderes Setup nur eine oder zwei Forecast-Quellen hat oder anders benannte Forecast-Entitäten liefert, müssen die Templates entsprechend angepasst werden.
 
@@ -144,23 +146,23 @@ Optional unterstützt SMACC zusätzlich EV-/Wallbox-Kontext, z. B.:
 
 Diese Rollen sind nicht zwingend für die Grundfunktion, aber im aktuellen Package bereits berücksichtigt.
 
-## Konkret referenzierte Quell-Entitäten im aktuellen Stand
+## Platzhalter-Entitäten der Share-Version
 
-Zur Nachvollziehbarkeit hier die extern referenzierten Kern-Entitäten des aktuellen Packages und ihre Herkunft:
+Die Datei `smacc.yaml` ist absichtlich anonymisiert. Statt realer Geräte-, Flächen- oder Seriennummern-Namen verwendet sie generische Platzhalter:
 
-| Entität | Herkunft |
+| Platzhalter | Bedeutung |
 |---|---|
-| `sensor.sn_3012402082_battery_soc_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
-| `sensor.sn_3012402082_battery_power_charge_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
-| `sensor.sn_3012402082_battery_power_discharge_total_3` | `sma` → SMA SUNNY TRIPOWER 10.0 SE |
-| `sensor.shm2_em_metering_power_absorbed` | `pysmaplus` → SHM2/EM |
-| `sensor.shm2_em_metering_power_supplied` | `pysmaplus` → SHM2/EM |
-| `sensor.pv_produktion_gesamt` | `template` |
-| `sensor.energy_current_hour`, `sensor.energy_next_hour`, `sensor.energy_production_today`, `sensor.energy_production_today_remaining`, `sensor.energy_production_tomorrow` | `forecast_solar` → PV-Fläche 1 |
-| gleiche Entitäten mit Suffix `_2` | `forecast_solar` → PV-Fläche 2 |
-| gleiche Entitäten mit Suffix `_3` | `forecast_solar` → PV-Fläche 3 |
+| `sensor.smacc_battery_soc` | Batterie-SOC |
+| `sensor.smacc_battery_charge_power` | aktuelle Batterieladeleistung |
+| `sensor.smacc_battery_discharge_power` | aktuelle Batterieentladeleistung |
+| `sensor.smacc_grid_import_power` | aktueller Netzbezug |
+| `sensor.smacc_grid_export_power` | aktuelle Netzeinspeisung |
+| `sensor.smacc_pv_power_total` | aktuelle gesamte PV-Leistung |
+| `sensor.smacc_pv1_forecast_*` | Forecast-Werte der PV-Fläche 1 |
+| `sensor.smacc_pv2_forecast_*` | Forecast-Werte der PV-Fläche 2 |
+| `sensor.smacc_pv3_forecast_*` | Forecast-Werte der PV-Fläche 3 |
 
-Genau diese Ableitung fehlte vorher in der README und gehört da sinnvollerweise rein.
+Diese Namen sind **Beispiel-/Mapping-Namen für die Veröffentlichung**. Sie sollen vor allem zeigen, **welche Rolle** eine Entität hat – nicht, wie sie beim ursprünglichen Nutzer hieß.
 
 ## Modbus-Anbindung
 
@@ -180,8 +182,8 @@ Die konkreten Register und Werte sind **hardware- und setupabhängig**. Wer SMAC
 ## Einrichtung
 
 1. Recorder, SQL und Modbus in Home Assistant verfügbar machen.
-2. Das Package in das eigene Packages-Verzeichnis kopieren.
-3. Alle lokalen Entity-IDs im Package auf die eigenen Sensoren und Aktoren anpassen.
+2. Die Datei `smacc.yaml` in das eigene Packages-Verzeichnis kopieren.
+3. Alle Platzhalter-Entitäten im Package auf die eigenen Sensoren und Aktoren mappen.
 4. Falls nötig, die Forecast-Logik auf die eigene Anzahl von PV-Flächen umbauen.
 5. Modbus-Hub, Slave und Register auf das eigene Gerät anpassen.
 6. Home Assistant neu starten.
@@ -204,9 +206,10 @@ Wichtig: Die 3-Tage-Zeitschnitt-Logik braucht Historie. Direkt nach frischer Ins
 ## Hinweise
 
 - SMACC ist **nicht Plug-and-Play über feste Entity-Namen**.
+- Die Share-Version ist absichtlich anonymisiert und nutzt generische Platzhalter.
 - Für andere Installationen müssen die Entitäten nach **Rolle/Bedeutung** gemappt werden.
 - Die Forecast-Struktur im Beispiel ist nur eine mögliche Ausprägung.
-- Die Modbus-Register müssen vor produktivem Einsatz zum echten Zielsystem passen.
+- Die Modbus-Register, der Hub-Name und die Slave-ID müssen vor produktivem Einsatz zum echten Zielsystem passen.
 - Persistente Helper wie eine aktive Ladephase sollten bei Neustarts sauber mitgedacht werden, damit es nicht zu ungewolltem Weiterladen kommt.
 
 ## Ziel des Projekts
