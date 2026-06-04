@@ -6,7 +6,7 @@ Es bewertet PV-Erzeugung, Hausverbrauch, Batteriestand, Ziel-SOC und Zeitfenster
 
 <img width="1052" height="614" alt="image" src="https://github.com/user-attachments/assets/10b141fb-564e-4178-89ef-03ab593edc7a" />
 
-
+⚠️ Disclaimer: Dieses Projekt wird nicht von SMA begleitet oder supportet. Nutzung auf eigene Gefahr. Kein persönlicher Support, aber die Community hilft gerne
 ## Warum SMACC?
 
 Viele Setups zeigen zwar Energieflüsse und Forecasts an, haben aber keine saubere Lade-Logik darüber. Typische Probleme sind:
