@@ -1,12 +1,12 @@
 # SMACC – SMA Charge Control
 
+⚠️ Disclaimer: Dieses Projekt wird nicht von SMA begleitet oder supportet. Nutzung auf eigene Gefahr. Kein persönlicher Support, aber die Community hilft gerne.
 SMACC ist ein Home-Assistant-Package zur **nachvollziehbaren Ladefreigabe von SMA-Batteriesystemen**.
 
 Es bewertet PV-Erzeugung, Hausverbrauch, Batteriestand, Ziel-SOC und Zeitfenster und entscheidet daraus, ob der Akku **jetzt laden**, **später laden** oder **gesperrt bleiben** soll. Die Entscheidung wird nicht nur angezeigt, sondern kann über Modbus auch aktiv an den Wechselrichter bzw. die Batterie-Steuerung geschrieben werden.
 
 <img width="1052" height="614" alt="image" src="https://github.com/user-attachments/assets/10b141fb-564e-4178-89ef-03ab593edc7a" />
 
-⚠️ Disclaimer: Dieses Projekt wird nicht von SMA begleitet oder supportet. Nutzung auf eigene Gefahr. Kein persönlicher Support, aber die Community hilft gerne
 ## Warum SMACC?
 
 Viele Setups zeigen zwar Energieflüsse und Forecasts an, haben aber keine saubere Lade-Logik darüber. Typische Probleme sind:
