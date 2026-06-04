@@ -1,0 +1,1676 @@
+# SMA Akku Ladesteuerung - vereinfachter Stand
+# Fokus:
+# - nur PV-Forecast, erwarteter Hausverbrauch, SOC-Ziele und Zielzeit
+# - alle Helfer ohne initial: damit Werte über HA-Neustarts persistent bleiben
+
+input_boolean:
+  sma_akku_ladesteuerung_aktiv:
+    name: SMA Akku Ladesteuerung aktiv
+    icon: mdi:battery-clock
+
+  sma_akku_ladephase_bis_ziel_aktiv:
+    name: SMA Akku Ladephase bis Ziel aktiv
+    icon: mdi:battery-charging-high
+
+  sma_akku_zielzeit_dynamisch_aktiv:
+    name: SMA Akku Zielzeit dynamisch nach PV-Ende
+    icon: mdi:clock-end
+
+  sma_akku_nachtziel_aktiv:
+    name: SMA Akku Nachtziel aktiv
+    icon: mdi:weather-night
+
+  sma_akku_morgen_forecast_aktiv:
+    name: SMA Akku Morgen Forecast Zielanhebung aktiv
+    icon: mdi:weather-cloudy-clock
+
+  sma_akku_balancing_100:
+    name: SMA Akku Balancing 100 Prozent
+    icon: mdi:battery-sync
+
+  sma_akku_balancing_woechentlich:
+    name: SMA Akku Balancing woechentlich automatisch
+    icon: mdi:calendar-sync
+
+
+input_select:
+  sma_akku_balancing_wochentag:
+    name: SMA Akku Balancing Wochentag
+    icon: mdi:calendar-week
+    options:
+      - Montag
+      - Dienstag
+      - Mittwoch
+      - Donnerstag
+      - Freitag
+      - Samstag
+      - Sonntag
+
+
+input_datetime:
+  sma_akku_ladephase_fruehestens_zeit:
+    name: SMA Akku Ladephase fruehestens ab
+    has_date: false
+    has_time: true
+
+  sma_akku_ladephase_spaetestens_zeit:
+    name: SMA Akku Ladephase spaetestens bis
+    has_date: false
+    has_time: true
+
+  sma_akku_ziel_erreicht_zeit:
+    name: SMA Akku Ziel SOC erreicht bis
+    has_date: false
+    has_time: true
+
+  sma_akku_pv_ende_letzte:
+    name: SMA Akku letztes PV Ende
+    has_date: true
+    has_time: true
+
+  sma_akku_pv_start_stabil_letzte:
+    name: SMA Akku letzter stabiler PV Start
+    has_date: true
+    has_time: true
+
+  sma_akku_balancing_startzeit:
+    name: SMA Akku Balancing Startzeit
+    has_date: false
+    has_time: true
+
+
+input_number:
+  sma_akku_ziel_mittag:
+    name: SMA Akku Ziel mittags
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-40
+
+  sma_akku_ziel_tagesende:
+    name: SMA Akku Ziel Tagesende
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-80
+
+  sma_akku_ziel_hysterese:
+    name: SMA Akku Ziel Hysterese
+    min: 0
+    max: 10
+    step: 0.5
+    unit_of_measurement: "%"
+    icon: mdi:arrow-expand-vertical
+
+  sma_akku_kapazitaet_kwh:
+    name: SMA Akku Kapazitaet
+    min: 1
+    max: 50
+    step: 0.1
+    unit_of_measurement: "kWh"
+    icon: mdi:battery
+
+  sma_akku_ladewirkungsgrad:
+    name: SMA Akku Ladewirkungsgrad
+    min: 0.70
+    max: 1.00
+    step: 0.01
+    icon: mdi:battery-sync
+
+  sma_akku_ladeleistung_max:
+    name: SMA Akku maximale Ladeleistung
+    min: 0
+    max: 10600
+    step: 100
+    unit_of_measurement: "W"
+    icon: mdi:battery-arrow-up
+
+  sma_akku_entladeleistung_max:
+    name: SMA Akku maximale Entladeleistung
+    min: 0
+    max: 10600
+    step: 100
+    unit_of_measurement: "W"
+    icon: mdi:battery-arrow-down
+
+  sma_akku_min_ladeueberschuss_w:
+    name: SMA Akku minimale erwartete Ladeleistung
+    min: 0
+    max: 10600
+    step: 100
+    unit_of_measurement: "W"
+    icon: mdi:flash
+
+  sma_akku_ladezeit_reserve_stunden:
+    name: SMA Akku Ladezeitreserve
+    min: 0
+    max: 5
+    step: 0.1
+    unit_of_measurement: "h"
+    icon: mdi:clock-plus
+
+  sma_akku_hausverbrauch_faktor:
+    name: SMA Akku Hausverbrauch Prognosefaktor
+    min: 0.5
+    max: 3
+    step: 0.05
+    icon: mdi:home-percent
+
+  sma_akku_forecast_sicherheitsfaktor:
+    name: SMA Akku Forecast Sicherheitsfaktor
+    min: 1.0
+    max: 2.5
+    step: 0.05
+    icon: mdi:shield-check
+
+  sma_akku_zielzeit_puffer_vor_pv_ende_minuten:
+    name: SMA Akku Zielzeit Puffer vor PV Ende
+    min: 0
+    max: 180
+    step: 5
+    unit_of_measurement: "min"
+    icon: mdi:clock-minus
+
+  sma_akku_zielzeit_sicherheitsreserve_minuten:
+    name: SMA Akku Zielzeit Sicherheitsreserve
+    min: 0
+    max: 240
+    step: 5
+    unit_of_measurement: "min"
+    icon: mdi:clock-alert
+
+  sma_akku_pv_ende_schwelle_w:
+    name: SMA Akku PV Ende Schwelle
+    min: 0
+    max: 5000
+    step: 50
+    unit_of_measurement: "W"
+    icon: mdi:weather-sunset-down
+
+  sma_akku_pv_stabil_schwelle_w:
+    name: SMA Akku stabiler PV Start Schwelle
+    min: 0
+    max: 5000
+    step: 50
+    unit_of_measurement: "W"
+    icon: mdi:weather-sunset-up
+
+  sma_akku_standby_pv_schwelle_w:
+    name: SMA Akku PV Standby Schwelle
+    min: 0
+    max: 1000
+    step: 10
+    unit_of_measurement: "W"
+    icon: mdi:power-sleep
+
+  sma_akku_pv_reststunden_max:
+    name: SMA Akku PV Reststunden Maximum
+    min: 1
+    max: 16
+    step: 0.5
+    unit_of_measurement: "h"
+    icon: mdi:clock-outline
+
+  sma_akku_rest_soc_pv_start:
+    name: SMA Akku Rest SOC bei PV Start
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-outline
+
+  sma_akku_nachtreserve_soc:
+    name: SMA Akku zusaetzliche Nachtreserve
+    min: 0
+    max: 50
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:shield-moon
+
+  sma_akku_nachtziel_min_soc:
+    name: SMA Akku Nachtziel Minimum
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-low
+
+  sma_akku_nachtziel_max_soc:
+    name: SMA Akku Nachtziel Maximum
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-high
+
+  sma_akku_nacht_soc_verlust_fallback:
+    name: SMA Akku Nacht SOC Verlust Fallback
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:weather-night
+
+  sma_akku_soc_bei_pv_ende:
+    name: SMA Akku SOC bei PV Ende
+    min: 0
+    max: 100
+    step: 0.1
+    unit_of_measurement: "%"
+    icon: mdi:battery-clock
+
+  sma_akku_soc_bei_pv_start_stabil:
+    name: SMA Akku SOC bei stabilem PV Start
+    min: 0
+    max: 100
+    step: 0.1
+    unit_of_measurement: "%"
+    icon: mdi:battery-clock-outline
+
+  sma_akku_nacht_soc_verlust_letzte:
+    name: SMA Akku letzter Nacht SOC Verlust
+    min: 0
+    max: 100
+    step: 0.1
+    unit_of_measurement: "%"
+    icon: mdi:counter
+
+  sma_akku_nachtverbrauch_kwh_letzte:
+    name: SMA Akku letzter Nachtverbrauch
+    min: 0
+    max: 50
+    step: 0.1
+    unit_of_measurement: "kWh"
+    icon: mdi:counter
+
+  sma_akku_ziel_morgen_mittel:
+    name: SMA Akku Ziel bei mittlerem Morgen Forecast
+    min: 80
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-90
+
+  sma_akku_ziel_morgen_schlecht:
+    name: SMA Akku Ziel bei schlechtem Morgen Forecast
+    min: 80
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:battery-high
+
+  sma_akku_morgen_forecast_schwelle_mittel:
+    name: SMA Akku Morgen Forecast Schwelle mittel
+    min: 0
+    max: 80
+    step: 1
+    unit_of_measurement: "kWh"
+    icon: mdi:weather-partly-cloudy
+
+  sma_akku_morgen_forecast_schwelle_schlecht:
+    name: SMA Akku Morgen Forecast Schwelle schlecht
+    min: 0
+    max: 80
+    step: 1
+    unit_of_measurement: "kWh"
+    icon: mdi:weather-cloudy-alert
+
+  sma_akku_balancing_min_restforecast_kwh:
+    name: SMA Akku Balancing Mindest Restforecast
+    min: 0
+    max: 80
+    step: 1
+    unit_of_measurement: "kWh"
+    icon: mdi:weather-sunny-alert
+
+
+
+timer:
+  sma_akku_modbus_refresh:
+    name: SMA Akku Modbus Refresh Timer
+    duration: "00:04:00"
+
+input_text:
+  sma_akku_ladestatus:
+    name: SMA Akku Ladestatus
+    icon: mdi:transmission-tower
+
+  sma_akku_cmpbms_payload_letzte:
+    name: SMA Akku CmpBMS Payload letzte
+    icon: mdi:code-json
+
+
+sensor:
+  - platform: statistics
+    name: SMA Akku Hausverbrauch Mittel 3h
+    entity_id: sensor.sma_akku_hausverbrauch_aktuell
+    state_characteristic: mean
+    max_age:
+      hours: 3
+    sampling_size: 1000
+
+  - platform: statistics
+    name: SMA Akku Hausverbrauch Mittel 7d
+    entity_id: sensor.sma_akku_hausverbrauch_aktuell
+    state_characteristic: mean
+    max_age:
+      days: 7
+    sampling_size: 10000
+
+  - platform: statistics
+    name: SMA Akku Nacht SOC Verlust Mittel 7d
+    entity_id: input_number.sma_akku_nacht_soc_verlust_letzte
+    state_characteristic: mean
+    max_age:
+      days: 7
+    sampling_size: 20
+
+
+sql:
+  - name: SMA Akku PV Zeitslot Mittel 3d
+    unique_id: sma_akku_pv_zeitslot_mittel_3d
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    icon: mdi:solar-power
+    query: >
+      {% set slot_minute = 30 if now().minute >= 30 else 0 %}
+      {% set slot_now = now().replace(minute=slot_minute, second=0, microsecond=0) %}
+      SELECT ROUND(AVG(day_mean), 0) AS value
+      FROM (
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=1)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=1) + timedelta(minutes=30)) }}
+        UNION ALL
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=2)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=2) + timedelta(minutes=30)) }}
+        UNION ALL
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=3)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=3) + timedelta(minutes=30)) }}
+      ) t
+      WHERE day_mean IS NOT NULL;
+    column: "value"
+
+  - name: SMA Akku Hausverbrauch Zeitslot Mittel 3d
+    unique_id: sma_akku_hausverbrauch_zeitslot_mittel_3d
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    icon: mdi:home-clock
+    query: >
+      {% set slot_minute = 30 if now().minute >= 30 else 0 %}
+      {% set slot_now = now().replace(minute=slot_minute, second=0, microsecond=0) %}
+      SELECT ROUND(AVG(day_mean), 0) AS value
+      FROM (
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.sma_akku_hausverbrauch_aktuell'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=1)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=1) + timedelta(minutes=30)) }}
+        UNION ALL
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.sma_akku_hausverbrauch_aktuell'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=2)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=2) + timedelta(minutes=30)) }}
+        UNION ALL
+        SELECT AVG(s.mean) AS day_mean
+        FROM statistics_short_term s
+        JOIN statistics_meta m ON s.metadata_id = m.id
+        WHERE m.statistic_id = 'sensor.sma_akku_hausverbrauch_aktuell'
+          AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=3)) }}
+          AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=3) + timedelta(minutes=30)) }}
+      ) t
+      WHERE day_mean IS NOT NULL;
+    column: "value"
+
+
+template:
+  - sensor:
+      - name: SMA Akku Hausverbrauch aktuell
+        unique_id: sma_akku_hausverbrauch_aktuell
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:home-lightning-bolt
+        availability: >
+          {{
+            states('sensor.pv_produktion_gesamt') | is_number and
+            states('sensor.shm2_em_metering_power_absorbed') | is_number and
+            states('sensor.shm2_em_metering_power_supplied') | is_number and
+            states('sensor.sn_3012402082_battery_power_discharge_total_3') | is_number and
+            states('sensor.sn_3012402082_battery_power_charge_total_3') | is_number
+          }}
+        state: >
+          {% set pv = states('sensor.pv_produktion_gesamt') | float(0) %}
+          {% set netzbezug = states('sensor.shm2_em_metering_power_absorbed') | float(0) %}
+          {% set einspeisung = states('sensor.shm2_em_metering_power_supplied') | float(0) %}
+          {% set batterie_entladung = states('sensor.sn_3012402082_battery_power_discharge_total_3') | float(0) %}
+          {% set batterie_ladung = states('sensor.sn_3012402082_battery_power_charge_total_3') | float(0) %}
+          {% set hausverbrauch = pv + netzbezug + batterie_entladung - einspeisung - batterie_ladung %}
+          {{ [hausverbrauch, 0] | max | round(0) }}
+
+      - name: SMA Akku Hausverbrauch Prognoseleistung
+        unique_id: sma_akku_hausverbrauch_prognoseleistung
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:home-clock
+        state: >
+          {% set aktuell = states('sensor.sma_akku_hausverbrauch_aktuell') | float(0) %}
+
+          {% set m3_alt = states('sensor.sma_akku_hausverbrauch_mittel_3h') %}
+          {% set m3_neu = states('sensor.sma_akku_hausverbrauch_mittel_3h_2') %}
+          {% set m3 = (m3_alt if m3_alt | is_number else m3_neu) | float(0) %}
+
+          {% set m7_alt = states('sensor.sma_akku_hausverbrauch_mittel_7d') %}
+          {% set m7_neu = states('sensor.sma_akku_hausverbrauch_mittel_7d_2') %}
+          {% set m7 = (m7_alt if m7_alt | is_number else m7_neu) | float(0) %}
+
+          {% set faktor = states('input_number.sma_akku_hausverbrauch_faktor') | float(1.0) %}
+          {% set basis = [aktuell, m3, m7] | max %}
+          {{ (basis * faktor) | round(0) }}
+
+      - name: SMA Akku PV Forecast Resttag Gesamt
+        unique_id: sma_akku_pv_forecast_resttag_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {{
+            (
+              states('sensor.energy_production_today_remaining') | float(0)
+              + states('sensor.energy_production_today_remaining_2') | float(0)
+              + states('sensor.energy_production_today_remaining_3') | float(0)
+            ) | round(2)
+          }}
+
+      - name: SMA Akku PV Forecast Heute Gesamt
+        unique_id: sma_akku_pv_forecast_heute_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {{
+            (
+              states('sensor.energy_production_today') | float(0)
+              + states('sensor.energy_production_today_2') | float(0)
+              + states('sensor.energy_production_today_3') | float(0)
+            ) | round(2)
+          }}
+
+      - name: SMA Akku PV Forecast Morgen Gesamt
+        unique_id: sma_akku_pv_forecast_morgen_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {{
+            (
+              states('sensor.energy_production_tomorrow') | float(0)
+              + states('sensor.energy_production_tomorrow_2') | float(0)
+              + states('sensor.energy_production_tomorrow_3') | float(0)
+            ) | round(2)
+          }}
+
+      - name: SMA Akku PV Forecast Diese Stunde Gesamt
+        unique_id: sma_akku_pv_forecast_diese_stunde_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {{
+            (
+              states('sensor.energy_current_hour') | float(0)
+              + states('sensor.energy_current_hour_2') | float(0)
+              + states('sensor.energy_current_hour_3') | float(0)
+            ) | round(2)
+          }}
+
+      - name: SMA Akku PV Forecast Naechste Stunde Gesamt
+        unique_id: sma_akku_pv_forecast_naechste_stunde_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {{
+            (
+              states('sensor.energy_next_hour') | float(0)
+              + states('sensor.energy_next_hour_2') | float(0)
+              + states('sensor.energy_next_hour_3') | float(0)
+            ) | round(2)
+          }}
+
+      - name: SMA Akku PV Forecast 2h Gesamt
+        unique_id: sma_akku_pv_forecast_2h_gesamt
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-power
+        state: >
+          {% set anteil = (60 - now().minute) / 60 %}
+          {% set f1 = (states('sensor.energy_current_hour') | float(0) * anteil) + states('sensor.energy_next_hour') | float(0) %}
+          {% set f2 = (states('sensor.energy_current_hour_2') | float(0) * anteil) + states('sensor.energy_next_hour_2') | float(0) %}
+          {% set f3 = (states('sensor.energy_current_hour_3') | float(0) * anteil) + states('sensor.energy_next_hour_3') | float(0) %}
+          {% set summe = f1 + f2 + f3 %}
+          {% set resttag = states('sensor.sma_akku_pv_forecast_resttag_gesamt') | float(0) %}
+          {{ [summe, resttag] | min | round(2) }}
+
+      - name: SMA Akku PV Forecast 2h Flaeche 1
+        unique_id: sma_akku_pv_forecast_2h_flaeche_1
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-panel
+        state: >
+          {% set anteil = (60 - now().minute) / 60 %}
+          {{ ((states('sensor.energy_current_hour') | float(0) * anteil) + states('sensor.energy_next_hour') | float(0)) | round(2) }}
+
+      - name: SMA Akku PV Forecast 2h Flaeche 2
+        unique_id: sma_akku_pv_forecast_2h_flaeche_2
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-panel
+        state: >
+          {% set anteil = (60 - now().minute) / 60 %}
+          {{ ((states('sensor.energy_current_hour_2') | float(0) * anteil) + states('sensor.energy_next_hour_2') | float(0)) | round(2) }}
+
+      - name: SMA Akku PV Forecast 2h Flaeche 3
+        unique_id: sma_akku_pv_forecast_2h_flaeche_3
+        unit_of_measurement: "kWh"
+        icon: mdi:solar-panel
+        state: >
+          {% set anteil = (60 - now().minute) / 60 %}
+          {{ ((states('sensor.energy_current_hour_3') | float(0) * anteil) + states('sensor.energy_next_hour_3') | float(0)) | round(2) }}
+
+      - name: SMA Akku Forecast PV Leistung naechste 2h
+        unique_id: sma_akku_forecast_pv_leistung_naechste_2h
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:solar-power
+        state: >
+          {% set kwh = states('sensor.sma_akku_pv_forecast_2h_gesamt') | float(0) %}
+          {{ ((kwh / 2) * 1000) | round(0) }}
+
+      - name: SMA Akku PV Reststunden geschaetzt
+        unique_id: sma_akku_pv_reststunden_geschaetzt
+        unit_of_measurement: "h"
+        icon: mdi:clock-end
+        state: >
+          {% set rest = states('sensor.sma_akku_pv_forecast_resttag_gesamt') | float(0) %}
+          {% set leistung = states('sensor.sma_akku_forecast_pv_leistung_naechste_2h') | float(0) %}
+          {% set max_h = states('input_number.sma_akku_pv_reststunden_max') | float(12) %}
+          {% if leistung <= 0 %}
+            0
+          {% else %}
+            {{ [rest / (leistung / 1000), max_h] | min | round(1) }}
+          {% endif %}
+
+      - name: SMA Akku Erwarteter Verbrauch bis PV Ende
+        unique_id: sma_akku_erwarteter_verbrauch_bis_pv_ende
+        unit_of_measurement: "kWh"
+        icon: mdi:home-lightning-bolt
+        state: >
+          {% set verbrauch_w = states('sensor.sma_akku_hausverbrauch_prognoseleistung') | float(0) %}
+          {% set h = states('sensor.sma_akku_pv_reststunden_geschaetzt') | float(0) %}
+          {{ ((verbrauch_w * h) / 1000) | round(2) }}
+
+      - name: SMA Akku Nutzbarer Forecast fuer Akku
+        unique_id: sma_akku_nutzbarer_forecast_fuer_akku
+        unit_of_measurement: "kWh"
+        icon: mdi:battery-clock
+        state: >
+          {% set rest = states('sensor.sma_akku_pv_forecast_resttag_gesamt') | float(0) %}
+          {% set verbrauch = states('sensor.sma_akku_erwarteter_verbrauch_bis_pv_ende') | float(0) %}
+          {{ [rest - verbrauch, 0] | max | round(2) }}
+
+      - name: SMA Akku Erwartete Ladeleistung naechste 2h
+        unique_id: sma_akku_erwartete_ladeleistung_naechste_2h
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:battery-charging-medium
+        state: >
+          {% set pv = states('sensor.sma_akku_forecast_pv_leistung_naechste_2h') | float(0) %}
+          {% set haus = states('sensor.sma_akku_hausverbrauch_prognoseleistung') | float(0) %}
+          {{ [pv - haus, 0] | max | round(0) }}
+
+      - name: SMA Akku Erwartete Ladeleistung Zeitslot 3d
+        unique_id: sma_akku_erwartete_ladeleistung_zeitslot_3d
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:battery-charging-medium
+        state: >
+          {% set pv_hist = states('sensor.sma_akku_pv_zeitslot_mittel_3d') %}
+          {% set haus_hist = states('sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d') %}
+          {% set pv = (pv_hist if pv_hist | is_number else states('sensor.pv_produktion_gesamt')) | float(0) %}
+          {% set haus = (haus_hist if haus_hist | is_number else states('sensor.sma_akku_hausverbrauch_aktuell')) | float(0) %}
+          {{ [pv - haus, 0] | max | round(0) }}
+
+      - name: SMA Akku Nacht SOC Verlust Prognose
+        unique_id: sma_akku_nacht_soc_verlust_prognose
+        unit_of_measurement: "%"
+        icon: mdi:weather-night
+        state: >
+          {% set mittel_alt = states('sensor.sma_akku_nacht_soc_verlust_mittel_7d') %}
+          {% set mittel_neu = states('sensor.sma_akku_nacht_soc_verlust_mittel_7d_2') %}
+          {% set mittel = (mittel_alt if mittel_alt | is_number else mittel_neu) | float(0) %}
+          {% set letzte = states('input_number.sma_akku_nacht_soc_verlust_letzte') | float(0) %}
+          {% set fallback = states('input_number.sma_akku_nacht_soc_verlust_fallback') | float(35) %}
+          {{ [mittel, letzte, fallback] | max | round(1) }}
+
+      - name: SMA Akku Nachtziel SOC
+        unique_id: sma_akku_nachtziel_soc
+        unit_of_measurement: "%"
+        icon: mdi:weather-night
+        state: >
+          {% set verlust = states('sensor.sma_akku_nacht_soc_verlust_prognose') | float(0) %}
+          {% set rest = states('input_number.sma_akku_rest_soc_pv_start') | float(20) %}
+          {% set reserve = states('input_number.sma_akku_nachtreserve_soc') | float(0) %}
+          {% set minimum = states('input_number.sma_akku_nachtziel_min_soc') | float(0) %}
+          {% set maximum = states('input_number.sma_akku_nachtziel_max_soc') | float(100) %}
+          {% set ziel = verlust + rest + reserve %}
+          {{ [[ziel, minimum] | max, maximum] | min | round(0) }}
+
+      - name: SMA Akku Dynamisches Ziel SOC
+        unique_id: sma_akku_dynamisches_ziel_soc
+        unit_of_measurement: "%"
+        icon: mdi:battery-target
+        state: >
+          {% set standard = states('input_number.sma_akku_ziel_tagesende') | float(80) %}
+          {% set nacht = states('sensor.sma_akku_nachtziel_soc') | float(0) %}
+          {% set morgen = states('sensor.sma_akku_pv_forecast_morgen_gesamt') | float(0) %}
+          {% set schw_mittel = states('input_number.sma_akku_morgen_forecast_schwelle_mittel') | float(25) %}
+          {% set schw_schlecht = states('input_number.sma_akku_morgen_forecast_schwelle_schlecht') | float(15) %}
+          {% set ziel_mittel = states('input_number.sma_akku_ziel_morgen_mittel') | float(90) %}
+          {% set ziel_schlecht = states('input_number.sma_akku_ziel_morgen_schlecht') | float(95) %}
+          {% if is_state('input_boolean.sma_akku_balancing_100', 'on') %}
+            100
+          {% else %}
+            {% if is_state('input_boolean.sma_akku_nachtziel_aktiv', 'on') and nacht > 0 %}
+              {% set basis = nacht %}
+            {% else %}
+              {% set basis = standard %}
+            {% endif %}
+            {% set morgen_ziel = 0 %}
+            {% if is_state('input_boolean.sma_akku_morgen_forecast_aktiv', 'on') and morgen > 0 and morgen < schw_schlecht %}
+              {% set morgen_ziel = ziel_schlecht %}
+            {% elif is_state('input_boolean.sma_akku_morgen_forecast_aktiv', 'on') and morgen > 0 and morgen < schw_mittel %}
+              {% set morgen_ziel = ziel_mittel %}
+            {% endif %}
+            {{ [basis, morgen_ziel] | max | round(0) }}
+          {% endif %}
+
+      - name: SMA Akku Fehlende Energie bis Ziel
+        unique_id: sma_akku_fehlende_energie_bis_ziel
+        unit_of_measurement: "kWh"
+        icon: mdi:battery-plus
+        state: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(80) %}
+          {% set kap = states('input_number.sma_akku_kapazitaet_kwh') | float(12.8) %}
+          {{ ([ziel - soc, 0] | max / 100 * kap) | round(2) }}
+
+      - name: SMA Akku Benötigte Ladezeit bis Ziel
+        unique_id: sma_akku_benoetigte_ladezeit_bis_ziel
+        unit_of_measurement: "h"
+        icon: mdi:timer-sand
+        state: >
+          {% set fehl = states('sensor.sma_akku_fehlende_energie_bis_ziel') | float(0) %}
+          {% set leistung = states('sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d') | float(0) %}
+          {% set wirk = states('input_number.sma_akku_ladewirkungsgrad') | float(0.9) %}
+          {% if fehl <= 0 %}
+            0
+          {% elif leistung <= 0 %}
+            99
+          {% else %}
+            {{ (fehl / ((leistung / 1000) * wirk)) | round(2) }}
+          {% endif %}
+
+      - name: SMA Akku Zielzeit effektiv
+        unique_id: sma_akku_zielzeit_effektiv
+        device_class: timestamp
+        icon: mdi:clock-end
+        state: >
+          {% set manuell_str = states('input_datetime.sma_akku_ziel_erreicht_zeit') %}
+          {% set manuell = today_at(manuell_str if manuell_str not in ['unknown', 'unavailable', 'none', ''] else '18:00:00') %}
+          {% if not is_state('input_boolean.sma_akku_zielzeit_dynamisch_aktiv', 'on') %}
+            {{ manuell.isoformat() }}
+          {% else %}
+            {% set pv_ende = states('input_datetime.sma_akku_pv_ende_letzte') %}
+            {% set puffer = states('input_number.sma_akku_zielzeit_puffer_vor_pv_ende_minuten') | int(30) %}
+            {% set reserve = states('input_number.sma_akku_zielzeit_sicherheitsreserve_minuten') | int(60) %}
+            {% if pv_ende in ['unknown', 'unavailable', 'none', ''] %}
+              {{ manuell.isoformat() }}
+            {% else %}
+              {% set dt = as_datetime(pv_ende) %}
+              {% set ziel = today_at(dt.strftime('%H:%M:%S')) - timedelta(minutes=(puffer + reserve)) %}
+              {{ ziel.isoformat() }}
+            {% endif %}
+          {% endif %}
+
+      - name: SMA Akku Zielzeit effektiv Text
+        unique_id: sma_akku_zielzeit_effektiv_text
+        icon: mdi:clock-end
+        state: >
+          {% set ts = states('sensor.sma_akku_zielzeit_effektiv') %}
+          {% if ts in ['unknown', 'unavailable', 'none', ''] %}
+            Unbekannt
+          {% elif is_state('input_boolean.sma_akku_zielzeit_dynamisch_aktiv', 'on') %}
+            Dynamisch: {{ as_timestamp(ts) | timestamp_custom('%H:%M Uhr', true) }}
+          {% else %}
+            Manuell: {{ as_timestamp(ts) | timestamp_custom('%H:%M Uhr', true) }}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn Wirksames Ziel
+        unique_id: sma_akku_ladebeginn_wirksames_ziel
+        device_class: timestamp
+        icon: mdi:clock-start
+        state: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(80) %}
+          {% set benoetigt = states('sensor.sma_akku_benoetigte_ladezeit_bis_ziel') | float(99) %}
+          {% set reserve = states('input_number.sma_akku_ladezeit_reserve_stunden') | float(0.5) %}
+          {% set zielzeit_sensor = states('sensor.sma_akku_zielzeit_effektiv') %}
+          {% set ab_str = states('input_datetime.sma_akku_ladephase_fruehestens_zeit') %}
+          {% set bis_str = states('input_datetime.sma_akku_ladephase_spaetestens_zeit') %}
+          {% set ladephase_ab = today_at(ab_str if ab_str not in ['unknown', 'unavailable', 'none', ''] else '11:00:00') %}
+          {% set ladephase_bis = today_at(bis_str if bis_str not in ['unknown', 'unavailable', 'none', ''] else '20:00:00') %}
+          {% if zielzeit_sensor in ['unknown', 'unavailable', 'none', ''] or soc >= ziel or benoetigt <= 0 or benoetigt >= 99 %}
+            {{ none }}
+          {% else %}
+            {% set zielzeit = as_datetime(zielzeit_sensor) %}
+            {% set start = zielzeit - timedelta(hours=(benoetigt + reserve)) %}
+            {% if start < ladephase_ab %}
+              {{ ladephase_ab.isoformat() }}
+            {% elif start > ladephase_bis %}
+              {{ none }}
+            {% else %}
+              {{ start.isoformat() }}
+            {% endif %}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn Wirksames Ziel Text
+        unique_id: sma_akku_ladebeginn_wirksames_ziel_text
+        icon: mdi:clock-start
+        state: >
+          {% set ts = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {% set benoetigt = states('sensor.sma_akku_benoetigte_ladezeit_bis_ziel') | float(99) %}
+          {% if ts not in ['unknown', 'unavailable', 'none', ''] %}
+            {{ as_timestamp(ts) | timestamp_custom('%H:%M Uhr', true) }}
+          {% elif benoetigt >= 99 %}
+            Nicht berechenbar - 3-Tage-Zeitschnitt ohne Ladeüberschuss
+          {% else %}
+            Kein Ladebeginn nötig
+          {% endif %}
+
+      - name: SMA Akku Aktuelles Ladeziel SOC
+        unique_id: sma_akku_aktuelles_ladeziel_soc
+        unit_of_measurement: "%"
+        icon: mdi:battery-arrow-up
+        state: >
+          {% set ziel_mittag = states('input_number.sma_akku_ziel_mittag') | float(40) %}
+          {% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(80) %}
+          {% set ladebeginn = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {% set bis_str = states('input_datetime.sma_akku_ladephase_spaetestens_zeit') %}
+          {% set ladephase_bis = today_at(bis_str if bis_str not in ['unknown', 'unavailable', 'none', ''] else '20:00:00') %}
+          {% set nachtfenster = now() >= ladephase_bis or now() < today_at('05:00:00') %}
+          {% if is_state('input_boolean.sma_akku_balancing_100', 'on') %}
+            100
+          {% elif is_state('input_boolean.sma_akku_ladephase_bis_ziel_aktiv', 'on') %}
+            {{ ziel | round(0) }}
+          {% elif ladebeginn not in ['unknown', 'unavailable', 'none', ''] and now() >= as_datetime(ladebeginn) %}
+            {{ ziel | round(0) }}
+          {% elif nachtfenster %}
+            {{ ziel | round(0) }}
+          {% else %}
+            {{ ziel_mittag | round(0) }}
+          {% endif %}
+
+      - name: SMA Akku Aktuelles Ladeziel Grund
+        unique_id: sma_akku_aktuelles_ladeziel_grund
+        icon: mdi:comment-question
+        state: >
+          {% set ladebeginn = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {% set bis_str = states('input_datetime.sma_akku_ladephase_spaetestens_zeit') %}
+          {% set ladephase_bis = today_at(bis_str if bis_str not in ['unknown', 'unavailable', 'none', ''] else '20:00:00') %}
+          {% set nachtfenster = now() >= ladephase_bis or now() < today_at('05:00:00') %}
+          {% if is_state('input_boolean.sma_akku_balancing_100', 'on') %}
+            Balancing aktiv
+          {% elif is_state('input_boolean.sma_akku_ladephase_bis_ziel_aktiv', 'on') %}
+            Ladephase bis Ziel aktiv
+          {% elif ladebeginn not in ['unknown', 'unavailable', 'none', ''] and now() >= as_datetime(ladebeginn) %}
+            Geplanter Ladebeginn erreicht
+          {% elif nachtfenster %}
+            Nachtfenster
+          {% else %}
+            Vor Ziel-Ladebeginn - nur Mittagsziel
+          {% endif %}
+
+      - name: SMA Akku Aktuelles Ladeziel Text
+        unique_id: sma_akku_aktuelles_ladeziel_text
+        icon: mdi:battery-arrow-up
+        state: >
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') %}
+          {% set ziel_mittag = states('input_number.sma_akku_ziel_mittag') | float(40) %}
+          {% set grund = states('sensor.sma_akku_aktuelles_ladeziel_grund') %}
+          {% if ziel in ['unknown', 'unavailable', 'none', ''] %}
+            Nicht berechenbar
+          {% elif ziel | float(0) <= ziel_mittag %}
+            Mittagsziel: {{ ziel }} %
+          {% else %}
+            Wirksames Ziel: {{ ziel }} % - {{ grund }}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn Prognose
+        unique_id: sma_akku_ladebeginn_prognose
+        device_class: timestamp
+        icon: mdi:clock-start
+        state: >
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ts = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {% if soc >= ziel %}
+            {{ none }}
+          {% elif ts in ['unknown', 'unavailable', 'none', ''] %}
+            {{ none }}
+          {% else %}
+            {{ ts }}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn Prognose Text
+        unique_id: sma_akku_ladebeginn_prognose_text
+        icon: mdi:clock-start
+        state: >
+          {% set entscheidung = states('sensor.sma_akku_entscheidung_text') %}
+          {% set ts = states('sensor.sma_akku_ladebeginn_prognose') %}
+          {% if entscheidung in ['Unter Mittagsziel - Laden erlauben', 'Nachtfenster - Laden erlauben ohne Ladephase', 'Ladephase aktiv - Laden bis Ziel', 'Zielzeit wird knapp - Ladephase starten'] %}
+            Jetzt laden - {{ entscheidung }}
+          {% elif ts not in ['unknown', 'unavailable', 'none', ''] %}
+            Geplant um {{ as_timestamp(ts) | timestamp_custom('%H:%M Uhr', true) }}
+          {% elif entscheidung == 'Ziel erreicht - Laden sperren' %}
+            Ziel erreicht - kein Ladebeginn geplant
+          {% else %}
+            {{ states('sensor.sma_akku_ladebeginn_wirksames_ziel_text') }}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn Uhrzeit
+        unique_id: sma_akku_ladebeginn_uhrzeit
+        icon: mdi:clock-start
+        state: >
+          {% set ts = states('sensor.sma_akku_ladebeginn_prognose') %}
+          {% if ts in ['unknown', 'unavailable', 'none', ''] %}
+            -
+          {% else %}
+            {{ as_timestamp(ts) | timestamp_custom('%H:%M Uhr', true) }}
+          {% endif %}
+
+      - name: SMA Akku Ladebeginn in Minuten
+        unique_id: sma_akku_ladebeginn_in_minuten
+        unit_of_measurement: "min"
+        icon: mdi:timer-outline
+        state: >
+          {% set ts = states('sensor.sma_akku_ladebeginn_prognose') %}
+          {% if ts in ['unknown', 'unavailable', 'none', ''] %}
+            0
+          {% else %}
+            {{ [((as_timestamp(ts) - as_timestamp(now())) / 60), 0] | max | round(0) }}
+          {% endif %}
+
+      - name: SMA Akku Ziel erreicht Sperre aktiv
+        unique_id: sma_akku_ziel_erreicht_sperre_aktiv
+        icon: mdi:battery-lock
+        state: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
+          {{ soc >= ziel }}
+
+      - name: SMA Akku Akku laedt trotz Sperre
+        unique_id: sma_akku_akku_ladt_trotz_sperre
+        icon: mdi:alert-circle
+        state: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
+          {% set charge = states('sensor.sn_3012402082_battery_power_charge_total_3') | float(0) %}
+          {{ soc >= ziel and charge > 100 }}
+
+      - name: SMA Akku Balancing Status
+        unique_id: sma_akku_balancing_status
+        icon: mdi:battery-sync
+        state: >
+          {% if is_state('input_boolean.sma_akku_balancing_100', 'on') %}
+            Balancing aktiv - Ziel 100 %
+          {% elif is_state('input_boolean.sma_akku_balancing_woechentlich', 'on') %}
+            Automatisch geplant: {{ states('input_select.sma_akku_balancing_wochentag') }} um {{ states('input_datetime.sma_akku_balancing_startzeit') }}
+          {% else %}
+            Balancing aus
+          {% endif %}
+
+      - name: SMA Akku Entscheidung Text
+        unique_id: sma_akku_entscheidung_text
+        icon: mdi:text-box-check
+        state: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
+          {% set ziel_mittag = states('input_number.sma_akku_ziel_mittag') | float(40) %}
+          {% set ladebeginn = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {% set bis_str = states('input_datetime.sma_akku_ladephase_spaetestens_zeit') %}
+          {% set ladephase_bis = today_at(bis_str if bis_str not in ['unknown', 'unavailable', 'none', ''] else '20:00:00') %}
+          {% set nachtfenster = now() >= ladephase_bis or now() < today_at('05:00:00') %}
+          {% set standby = is_state('binary_sensor.sma_akku_pv_standby_aktiv', 'on') %}
+          {% if standby %}
+            PV-Standby - keine Ladeoptimierung
+          {% elif soc >= ziel %}
+            Ziel erreicht - Laden sperren
+          {% elif ziel <= ziel_mittag %}
+            Unter Mittagsziel - Laden erlauben
+          {% elif is_state('input_boolean.sma_akku_ladephase_bis_ziel_aktiv', 'on') %}
+            Ladephase aktiv - Laden bis Ziel
+          {% elif nachtfenster %}
+            Nachtfenster - Laden erlauben ohne Ladephase
+          {% elif ladebeginn not in ['unknown', 'unavailable', 'none', ''] and now() >= as_datetime(ladebeginn) %}
+            Zielzeit wird knapp - Ladephase starten
+          {% else %}
+            Zielzeit komfortabel - Laden verzögern
+          {% endif %}
+
+  - binary_sensor:
+      - name: SMA Akku Ladezeit reicht noch
+        unique_id: sma_akku_ladezeit_reicht_noch
+        icon: mdi:clock-check
+        state: >
+          {% set ts = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
+          {{ ts not in ['unknown', 'unavailable', 'none', ''] and now() < as_datetime(ts) }}
+
+      - name: SMA Akku Laden soll erlaubt sein
+        unique_id: sma_akku_laden_soll_erlaubt_sein
+        icon: mdi:battery-charging
+        state: >
+          {% set entscheidung = states('sensor.sma_akku_entscheidung_text') %}
+          {{ entscheidung in ['Unter Mittagsziel - Laden erlauben', 'Nachtfenster - Laden erlauben ohne Ladephase', 'Ladephase aktiv - Laden bis Ziel', 'Zielzeit wird knapp - Ladephase starten'] }}
+
+      - name: SMA Akku PV Standby aktiv
+        unique_id: sma_akku_pv_standby_aktiv
+        icon: mdi:power-sleep
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 5
+        state: >
+          {% set pv = states('sensor.pv_produktion_gesamt') | float(0) %}
+          {% set schwelle = states('input_number.sma_akku_standby_pv_schwelle_w') | float(50) %}
+          {{ pv <= schwelle }}
+
+
+script:
+  sma_akku_diagnose_anzeigen:
+    alias: SMA Akku Diagnose anzeigen
+    mode: single
+    sequence:
+      - service: persistent_notification.create
+        data:
+          title: "SMA Akku Diagnose"
+          notification_id: "sma_akku_diagnose"
+          message: >
+            ## Status
+
+            Zeitpunkt: {{ now().strftime('%d.%m.%Y %H:%M:%S') }}
+
+            Entscheidung: {{ states('sensor.sma_akku_entscheidung_text') }}
+
+            Laden soll erlaubt sein: {{ states('binary_sensor.sma_akku_laden_soll_erlaubt_sein') }}
+
+            Ladezeit reicht noch: {{ states('binary_sensor.sma_akku_ladezeit_reicht_noch') }}
+
+            PV-Standby aktiv: {{ states('binary_sensor.sma_akku_pv_standby_aktiv') }}
+
+            Ladephase bis Ziel aktiv: {{ states('input_boolean.sma_akku_ladephase_bis_ziel_aktiv') }}
+
+            Ladestatus: {{ states('input_text.sma_akku_ladestatus') }}
+
+            Ziel-erreicht-Sperre aktiv: {{ states('sensor.sma_akku_ziel_erreicht_sperre_aktiv') }}
+
+            Akku laedt trotz Sperre: {{ states('sensor.sma_akku_akku_ladt_trotz_sperre') }}
+
+            Akku Ladeleistung aktuell: {{ states('sensor.sn_3012402082_battery_power_charge_total_3') }} W
+
+
+            ## Ladebeginn / Zielzeit
+
+            Prognose Text: {{ states('sensor.sma_akku_ladebeginn_prognose_text') }}
+
+            Ladebeginn Uhrzeit: {{ states('sensor.sma_akku_ladebeginn_uhrzeit') }}
+
+            Ladebeginn Wirksames Ziel: {{ states('sensor.sma_akku_ladebeginn_wirksames_ziel_text') }}
+
+            Ladebeginn Minuten: {{ states('sensor.sma_akku_ladebeginn_in_minuten') }}
+
+            Ladefenster frühestens ab: {{ states('input_datetime.sma_akku_ladephase_fruehestens_zeit') }}
+
+            Ladefenster spätestens bis: {{ states('input_datetime.sma_akku_ladephase_spaetestens_zeit') }}
+
+            Ziel-SOC erreicht bis manuell: {{ states('input_datetime.sma_akku_ziel_erreicht_zeit') }}
+
+            Zielzeit dynamisch aktiv: {{ states('input_boolean.sma_akku_zielzeit_dynamisch_aktiv') }}
+
+            Effektive Zielzeit: {{ states('sensor.sma_akku_zielzeit_effektiv_text') }}
+
+            Zielzeit Puffer vor PV-Ende: {{ states('input_number.sma_akku_zielzeit_puffer_vor_pv_ende_minuten') }} min
+
+            Zielzeit Sicherheitsreserve: {{ states('input_number.sma_akku_zielzeit_sicherheitsreserve_minuten') }} min
+
+            Letztes PV-Ende: {{ states('input_datetime.sma_akku_pv_ende_letzte') }}
+
+            PV-Ende Schwelle: {{ states('input_number.sma_akku_pv_ende_schwelle_w') }} W
+
+
+            ## Akku / Ziel
+
+            SOC aktuell: {{ states('sensor.sn_3012402082_battery_soc_total_3') }} %
+
+            Aktuelles Ladeziel-SOC: {{ states('sensor.sma_akku_aktuelles_ladeziel_soc') }} %
+
+            Aktuelles Ladeziel: {{ states('sensor.sma_akku_aktuelles_ladeziel_text') }}
+
+            Aktuelles Ladeziel Grund: {{ states('sensor.sma_akku_aktuelles_ladeziel_grund') }}
+
+            Wirksames Ziel-SOC: {{ states('sensor.sma_akku_dynamisches_ziel_soc') }} %
+
+            Ziel Mittag: {{ states('input_number.sma_akku_ziel_mittag') }} %
+
+            Ziel Tagesende: {{ states('input_number.sma_akku_ziel_tagesende') }} %
+
+            Fehlende Energie bis Ziel: {{ states('sensor.sma_akku_fehlende_energie_bis_ziel') }} kWh
+
+            Benötigte Ladezeit bis Ziel: {{ states('sensor.sma_akku_benoetigte_ladezeit_bis_ziel') }} h
+
+
+            ## Forecast / Verbrauch
+
+            PV-Produktion aktuell: {{ states('sensor.pv_produktion_gesamt') }} W
+
+            Forecast Resttag gesamt: {{ states('sensor.sma_akku_pv_forecast_resttag_gesamt') }} kWh
+
+            Forecast 2h gesamt: {{ states('sensor.sma_akku_pv_forecast_2h_gesamt') }} kWh
+
+            Forecast 2h Flaeche 1: {{ states('sensor.sma_akku_pv_forecast_2h_flaeche_1') }} kWh
+
+            Forecast 2h Flaeche 2: {{ states('sensor.sma_akku_pv_forecast_2h_flaeche_2') }} kWh
+
+            Forecast 2h Flaeche 3: {{ states('sensor.sma_akku_pv_forecast_2h_flaeche_3') }} kWh
+
+            Forecast PV-Leistung naechste 2h: {{ states('sensor.sma_akku_forecast_pv_leistung_naechste_2h') }} W
+
+            PV Zeitslot Mittel 3d: {{ states('sensor.sma_akku_pv_zeitslot_mittel_3d') }} W
+
+            Hausverbrauch aktuell: {{ states('sensor.sma_akku_hausverbrauch_aktuell') }} W
+
+            Hausverbrauch Prognoseleistung: {{ states('sensor.sma_akku_hausverbrauch_prognoseleistung') }} W
+
+            Hausverbrauch Zeitslot Mittel 3d: {{ states('sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d') }} W
+
+            Hausverbrauch Mittel 3h verwendet: {% set v = states('sensor.sma_akku_hausverbrauch_mittel_3h') %}{% if v | is_number %}{{ v }}{% else %}{{ states('sensor.sma_akku_hausverbrauch_mittel_3h_2') }}{% endif %} W
+
+            Hausverbrauch Mittel 7d verwendet: {% set v = states('sensor.sma_akku_hausverbrauch_mittel_7d') %}{% if v | is_number %}{{ v }}{% else %}{{ states('sensor.sma_akku_hausverbrauch_mittel_7d_2') }}{% endif %} W
+
+            Erwarteter Verbrauch bis PV-Ende: {{ states('sensor.sma_akku_erwarteter_verbrauch_bis_pv_ende') }} kWh
+
+            Nutzbarer Forecast fuer Akku: {{ states('sensor.sma_akku_nutzbarer_forecast_fuer_akku') }} kWh
+
+            Erwartete Ladeleistung naechste 2h: {{ states('sensor.sma_akku_erwartete_ladeleistung_naechste_2h') }} W
+
+            Erwartete Ladeleistung Zeitslot 3d: {{ states('sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d') }} W
+
+
+            ## Nachtziel / Balancing
+
+            Nachtziel aktiv: {{ states('input_boolean.sma_akku_nachtziel_aktiv') }}
+
+            Nachtziel SOC: {{ states('sensor.sma_akku_nachtziel_soc') }} %
+
+            Nacht-SOC-Verlust letzte Nacht: {{ states('input_number.sma_akku_nacht_soc_verlust_letzte') }} %
+
+            Nacht-SOC-Verlust Prognose: {{ states('sensor.sma_akku_nacht_soc_verlust_prognose') }} %
+
+            Nacht-SOC-Verlust Mittel 7d verwendet: {% set v = states('sensor.sma_akku_nacht_soc_verlust_mittel_7d') %}{% if v | is_number %}{{ v }}{% else %}{{ states('sensor.sma_akku_nacht_soc_verlust_mittel_7d_2') }}{% endif %} %
+
+            Gewünschter Rest-SOC morgens: {{ states('input_number.sma_akku_rest_soc_pv_start') }} %
+
+            Zusätzliche Nachtreserve: {{ states('input_number.sma_akku_nachtreserve_soc') }} %
+
+            Balancing 100 aktiv: {{ states('input_boolean.sma_akku_balancing_100') }}
+
+            Balancing wöchentlich aktiv: {{ states('input_boolean.sma_akku_balancing_woechentlich') }}
+
+            Balancing Status: {{ states('sensor.sma_akku_balancing_status') }}
+
+            Balancing Wochentag: {{ states('input_select.sma_akku_balancing_wochentag') }}
+
+            Balancing Startzeit: {{ states('input_datetime.sma_akku_balancing_startzeit') }}
+
+            Balancing Mindest-Restforecast: {{ states('input_number.sma_akku_balancing_min_restforecast_kwh') }} kWh
+
+
+            ## EV-Verriegelung
+
+            EV-Verriegelung aktiv: {{ states('input_boolean.sma_ev_akku_verriegelung_aktiv') }}
+
+            EV-Verriegelung soll aktiv sein: {{ states('binary_sensor.sma_ev_akku_verriegelung_soll_aktiv_sein') }}
+
+            EV-Modus: {{ states('sensor.sma_ev_lademodus_text') }} / {{ states('sensor.sma_ev_lademodus_aktuell') }}
+
+            EV-Ladeleistung: {{ states('sensor.sma_ev_ladeleistung_aktuell') }} W
+
+            EV-Hausverbrauch ohne Auto: {{ states('sensor.sma_ev_hausverbrauch_ohne_auto') }} W
+
+            EV-PV-Defizit Auto: {{ states('sensor.sma_ev_pv_defizit_auto') }} W
+
+            EV-Akku-Entladeleistung Ziel: {{ states('sensor.sma_ev_akku_entladeleistung_ziel') }} W
+
+  sma_akku_cmpbms_laden_erlauben:
+    alias: SMA Akku CmpBMS Laden erlauben
+    mode: single
+    sequence:
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40793
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40795
+          value:
+            - 0
+            - "{{ states('input_number.sma_akku_ladeleistung_max') | int(10600) }}"
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40797
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40799
+          value:
+            - 0
+            - "{{ states('sensor.sma_ev_akku_entladeleistung_ziel') | int(states('input_number.sma_akku_entladeleistung_max') | int(10600)) }}"
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40801
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40236
+          value:
+            - 0
+            - 1438
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_ladestatus
+        data:
+          value: "Laden erlaubt"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_cmpbms_payload_letzte
+        data:
+          value: >
+            40793:0|40795:{{ states('input_number.sma_akku_ladeleistung_max') | int(10600) }}|40797:0|40799:{{ states('sensor.sma_ev_akku_entladeleistung_ziel') | int(states('input_number.sma_akku_entladeleistung_max') | int(10600)) }}|40801:0|40236:1438
+
+  sma_akku_cmpbms_laden_sperren:
+    alias: SMA Akku CmpBMS Laden sperren
+    mode: single
+    sequence:
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40793
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40795
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40797
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40799
+          value:
+            - 0
+            - "{{ states('sensor.sma_ev_akku_entladeleistung_ziel') | int(states('input_number.sma_akku_entladeleistung_max') | int(10600)) }}"
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40801
+          value:
+            - 0
+            - 0
+      - delay:
+          milliseconds: 300
+      - service: modbus.write_register
+        data:
+          hub: sma_stp10se
+          slave: 3
+          address: 40236
+          value:
+            - 0
+            - 2290
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_ladestatus
+        data:
+          value: "Laden gesperrt"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_cmpbms_payload_letzte
+        data:
+          value: >
+            40793:0|40795:0|40797:0|40799:{{ states('sensor.sma_ev_akku_entladeleistung_ziel') | int(states('input_number.sma_akku_entladeleistung_max') | int(10600)) }}|40801:0|40236:2290
+
+
+automation:
+  - alias: SMA Akku CmpBMS Ladesteuerung dynamisch
+    id: sma_akku_cmpbms_ladesteuerung_dynamisch
+    mode: queued
+    max: 10
+    max_exceeded: silent
+    trigger:
+      - platform: homeassistant
+        event: start
+        id: start
+
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sma_akku_modbus_refresh
+        id: timer
+
+      # Sofort nur bei stabilen Steuergrößen.
+      # Wichtig: kein Trigger auf Entscheidungstext, Ladestatus, Forecast-/Leistungswerte.
+      - platform: state
+        entity_id:
+          - binary_sensor.sma_akku_laden_soll_erlaubt_sein
+          - binary_sensor.sma_akku_pv_standby_aktiv
+          - binary_sensor.sma_ev_akku_verriegelung_soll_aktiv_sein
+          - sensor.sn_3012402082_battery_soc_total_3
+          - sensor.sma_akku_aktuelles_ladeziel_soc
+          - sensor.sma_akku_dynamisches_ziel_soc
+          - sensor.sma_ev_akku_entladeleistung_ziel
+        id: state
+
+      - platform: state
+        entity_id: sensor.sma_akku_akku_laedt_trotz_sperre
+        to: "True"
+        id: trotz_sperre
+
+      - platform: state
+        entity_id:
+          - input_boolean.sma_akku_ladesteuerung_aktiv
+          - input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+          - input_boolean.sma_akku_zielzeit_dynamisch_aktiv
+          - input_boolean.sma_akku_nachtziel_aktiv
+          - input_boolean.sma_akku_morgen_forecast_aktiv
+          - input_boolean.sma_akku_balancing_100
+          - input_boolean.sma_akku_balancing_woechentlich
+          - input_select.sma_akku_balancing_wochentag
+          - input_datetime.sma_akku_balancing_startzeit
+          - input_number.sma_akku_balancing_min_restforecast_kwh
+          - input_number.sma_akku_ziel_mittag
+          - input_number.sma_akku_ziel_tagesende
+          - input_number.sma_akku_ziel_hysterese
+          - input_number.sma_akku_ladeleistung_max
+          - input_number.sma_akku_entladeleistung_max
+          - input_number.sma_akku_ladezeit_reserve_stunden
+          - input_number.sma_akku_ladewirkungsgrad
+          - input_number.sma_akku_kapazitaet_kwh
+          - input_number.sma_akku_hausverbrauch_faktor
+          - input_datetime.sma_akku_ladephase_fruehestens_zeit
+          - input_datetime.sma_akku_ladephase_spaetestens_zeit
+          - input_datetime.sma_akku_ziel_erreicht_zeit
+          - input_number.sma_akku_zielzeit_sicherheitsreserve_minuten
+          - input_number.sma_akku_zielzeit_puffer_vor_pv_ende_minuten
+          - input_number.sma_akku_morgen_forecast_schwelle_mittel
+          - input_number.sma_akku_morgen_forecast_schwelle_schlecht
+          - input_number.sma_akku_ziel_morgen_mittel
+          - input_number.sma_akku_ziel_morgen_schlecht
+          - input_number.sma_akku_rest_soc_pv_start
+          - input_number.sma_akku_nachtreserve_soc
+          - input_number.sma_akku_nachtziel_min_soc
+          - input_number.sma_akku_nachtziel_max_soc
+          - input_number.sma_akku_nacht_soc_verlust_fallback
+        id: helper
+
+    condition:
+      - condition: state
+        entity_id: input_boolean.sma_akku_ladesteuerung_aktiv
+        state: "on"
+
+    action:
+      - variables:
+          trigger_art: "{{ trigger.id | default('unknown') }}"
+          standby_aktiv: "{{ is_state('binary_sensor.sma_akku_pv_standby_aktiv', 'on') }}"
+          laden_erlauben: "{{ is_state('binary_sensor.sma_akku_laden_soll_erlaubt_sein', 'on') }}"
+          soc: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) }}"
+          ziel: "{{ states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) }}"
+          entscheidung: "{{ states('sensor.sma_akku_entscheidung_text') }}"
+          letzter_status: "{{ states('input_text.sma_akku_ladestatus') }}"
+          letztes_payload: "{{ states('input_text.sma_akku_cmpbms_payload_letzte') }}"
+          cmpbms_ladeleistung: >
+            {% if standby_aktiv or soc >= ziel or not laden_erlauben %}
+              0
+            {% else %}
+              {{ states('input_number.sma_akku_ladeleistung_max') | int(10600) }}
+            {% endif %}
+          cmpbms_entladeleistung: "{{ states('sensor.sma_ev_akku_entladeleistung_ziel') | int(states('input_number.sma_akku_entladeleistung_max') | int(10600)) }}"
+          cmpbms_freigabe_code: >
+            {% if standby_aktiv or soc >= ziel or not laden_erlauben %}
+              2290
+            {% else %}
+              1438
+            {% endif %}
+          sollstatus: >
+            {% if standby_aktiv %}
+              Standby
+            {% elif soc >= ziel %}
+              Laden gesperrt
+            {% elif laden_erlauben %}
+              Laden erlaubt
+            {% else %}
+              Laden gesperrt
+            {% endif %}
+          payload_soll: >
+            40793:0|40795:{{ cmpbms_ladeleistung | trim }}|40797:0|40799:{{ cmpbms_entladeleistung }}|40801:0|40236:{{ cmpbms_freigabe_code | trim }}
+          schreiben_erforderlich: >
+            {{
+              trigger_art in ['start', 'timer', 'trotz_sperre']
+              or sollstatus != letzter_status
+              or payload_soll | trim != letztes_payload | trim
+            }}
+
+      - choose:
+          # Standby: ausdrücklich kein Modbus schreiben, Timer stoppen.
+          - conditions:
+              - condition: template
+                value_template: "{{ standby_aktiv }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+              - service: timer.cancel
+                target:
+                  entity_id: timer.sma_akku_modbus_refresh
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.sma_akku_ladestatus
+                data:
+                  value: "Standby - kein Modbus"
+
+          # Nur bei Start/Timer oder tatsächlichem Statuswechsel schreiben.
+          - conditions:
+              - condition: template
+                value_template: "{{ schreiben_erforderlich }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ sollstatus == 'Laden erlaubt' }}"
+                    sequence:
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ entscheidung == 'Zielzeit wird knapp - Ladephase starten' }}"
+                            sequence:
+                              - service: input_boolean.turn_on
+                                target:
+                                  entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+                      - service: script.sma_akku_cmpbms_laden_erlauben
+                      - service: timer.start
+                        target:
+                          entity_id: timer.sma_akku_modbus_refresh
+                        data:
+                          duration: "00:04:00"
+
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ sollstatus == 'Laden gesperrt' }}"
+                    sequence:
+                      - service: input_boolean.turn_off
+                        target:
+                          entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+                      - service: script.sma_akku_cmpbms_laden_sperren
+                      - service: timer.start
+                        target:
+                          entity_id: timer.sma_akku_modbus_refresh
+                        data:
+                          duration: "00:04:00"
+
+        default: []
+
+  - alias: SMA Akku Ziel erreicht hart sperren
+    id: sma_akku_ziel_erreicht_hart_sperren
+    mode: restart
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.sn_3012402082_battery_soc_total_3
+          - sensor.sma_akku_aktuelles_ladeziel_soc
+          - sensor.sma_akku_dynamisches_ziel_soc
+    condition:
+      - condition: state
+        entity_id: input_boolean.sma_akku_ladesteuerung_aktiv
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.sma_akku_pv_standby_aktiv
+        state: "off"
+      - condition: template
+        value_template: >
+          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
+          {{ soc >= ziel }}
+    action:
+      # Kein direkter Modbus-Schreibzugriff mehr.
+      # Die zentrale Modbus-Automation reagiert auf dieselbe SOC-/Zieländerung
+      # und schreibt genau einmal, sofern der Sollstatus gewechselt hat.
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+
+  - alias: SMA Akku PV Ende erkennen
+    id: sma_akku_pv_ende_erkennen
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: template
+        value_template: >
+          {{
+            states('sensor.pv_produktion_gesamt') | float(0)
+            < states('input_number.sma_akku_pv_ende_schwelle_w') | float(950)
+          }}
+        for:
+          minutes: 10
+    condition:
+      - condition: time
+        after: "15:00:00"
+        before: "23:59:00"
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.sma_akku_pv_ende_letzte
+        data:
+          datetime: "{{ (now() - timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sma_akku_soc_bei_pv_ende
+        data:
+          value: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) | round(1) }}"
+
+  - alias: SMA Akku stabilen PV Start erkennen
+    id: sma_akku_stabilen_pv_start_erkennen
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: template
+        value_template: >
+          {{
+            states('sensor.pv_produktion_gesamt') | float(0)
+            > states('input_number.sma_akku_pv_stabil_schwelle_w') | float(800)
+          }}
+        for:
+          minutes: 15
+    condition:
+      - condition: time
+        after: "05:00:00"
+        before: "13:00:00"
+    action:
+      - variables:
+          soc_ende: "{{ states('input_number.sma_akku_soc_bei_pv_ende') | float(0) }}"
+          soc_start: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) }}"
+          kapazitaet: "{{ states('input_number.sma_akku_kapazitaet_kwh') | float(12.8) }}"
+          soc_verlust: "{{ [soc_ende - soc_start, 0] | max }}"
+          kwh_verlust: "{{ (([soc_ende - soc_start, 0] | max) / 100 * kapazitaet) }}"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.sma_akku_pv_start_stabil_letzte
+        data:
+          datetime: "{{ (now() - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sma_akku_soc_bei_pv_start_stabil
+        data:
+          value: "{{ soc_start | float(0) | round(1) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sma_akku_nacht_soc_verlust_letzte
+        data:
+          value: "{{ soc_verlust | float(0) | round(1) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sma_akku_nachtverbrauch_kwh_letzte
+        data:
+          value: "{{ kwh_verlust | float(0) | round(2) }}"
+
+  - alias: SMA Akku Balancing woechentlich starten
+    id: sma_akku_balancing_woechentlich_starten
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: input_datetime.sma_akku_balancing_startzeit
+    condition:
+      - condition: state
+        entity_id: input_boolean.sma_akku_ladesteuerung_aktiv
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.sma_akku_balancing_woechentlich
+        state: "on"
+      - condition: template
+        value_template: >
+          {% set tage = {
+            'Montag': 0,
+            'Dienstag': 1,
+            'Mittwoch': 2,
+            'Donnerstag': 3,
+            'Freitag': 4,
+            'Samstag': 5,
+            'Sonntag': 6
+          } %}
+          {{ now().weekday() == tage.get(states('input_select.sma_akku_balancing_wochentag'), 6) }}
+      - condition: template
+        value_template: >
+          {% set min_rest = states('input_number.sma_akku_balancing_min_restforecast_kwh') | float(0) %}
+          {% set rest = states('sensor.sma_akku_nutzbarer_forecast_fuer_akku') | float(0) %}
+          {{ min_rest <= 0 or rest >= min_rest }}
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.sma_akku_balancing_100
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_ladestatus
+        data:
+          value: "Woechentliches Balancing gestartet - Ziel 100 Prozent"
+
+  - alias: SMA Akku Balancing automatisch beenden
+    id: sma_akku_balancing_automatisch_beenden
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.sn_3012402082_battery_soc_total_3
+        above: 99.4
+    condition:
+      - condition: state
+        entity_id: input_boolean.sma_akku_balancing_100
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sma_akku_balancing_100
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sma_akku_ladephase_bis_ziel_aktiv
+      - service: script.sma_akku_cmpbms_laden_sperren
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sma_akku_ladestatus
+        data:
+          value: "Balancing erreicht - Laden gesperrt"
