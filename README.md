@@ -79,7 +79,7 @@ Modbus ist erforderlich, wenn SMACC nicht nur anzeigen, sondern tatsächlich ste
 
 ### Forecast.Solar
 
-Im aktuellen Package stammen die Forecast-Werte konkret aus **Forecast.Solar** (`forecast_solar`). Verwendet werden drei getrennte Forecast-Quellen bzw. PV-Flächen.
+Im aktuellen Package stammen die Forecast-Werte konkret aus **Forecast.Solar** (`forecast_solar`).
 
 Wenn jemand statt Forecast.Solar eine andere Forecast-Integration nutzt, müssen die Forecast-Entitäten im Package entsprechend ersetzt werden.
 
