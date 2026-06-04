@@ -1,7 +1,5 @@
-# SMACC
-SMACC - SMA Charge Control
 SMA Akku Package
-GitHub-taugliche Requirements- und Installationsanleitung für das Home-Assistant-Package zur SMA-Akku-Ladesteuerung.
+Requirements- und Installationsanleitung für das Home-Assistant-Package zur SMA-Akku-Ladesteuerung.
 ---
 Zweck
 Dieses Package steuert die Ladefreigabe eines SMA-Akkus auf Basis von:
@@ -271,6 +269,3 @@ standortspezifische Entity-IDs parametrisierbar machen
 EV-/Wallbox-Logik als optionales Modul trennen
 Modbus-Hub, Slave und Register als klaren Konfigurationsblock dokumentieren
 Reload-/Neustart-Schutz für `input_boolean.sma_akku_ladephase_bis_ziel_aktiv` ergänzen
----
-Datei
-Diese GitHub-taugliche Markdown-Datei wurde aus dem aktuell verwendeten Package-Stand abgeleitet.
