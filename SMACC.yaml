@@ -1,8 +1,37 @@
-# SMA Akku Ladesteuerung - vereinfachter Stand
-# Fokus:
-# - nur PV-Forecast, erwarteter Hausverbrauch, SOC-Ziele und Zielzeit
-# - alle Helfer ohne initial: damit Werte über HA-Neustarts persistent bleiben
-
+# SMACC – SMA Charge Control (anonymisierte Share-Version)
+#
+# WICHTIG:
+# - Diese Datei ist absichtlich anonymisiert und NICHT direkt plug-and-play.
+# - Alle externen Entitäten sind als generische Platzhalter benannt.
+# - Vor Einsatz bitte auf die eigenen Entity-IDs, Forecast-Quellen, Modbus-Hub und Slave-ID mappen.
+#
+# Erwartete externe Platzhalter-Entitäten:
+# - sensor.smacc_battery_soc
+# - sensor.smacc_battery_charge_power
+# - sensor.smacc_battery_discharge_power
+# - sensor.smacc_grid_import_power
+# - sensor.smacc_grid_export_power
+# - sensor.smacc_pv_power_total
+# - sensor.smacc_pv1_forecast_current_hour
+# - sensor.smacc_pv1_forecast_next_hour
+# - sensor.smacc_pv1_forecast_today_total
+# - sensor.smacc_pv1_forecast_today_remaining
+# - sensor.smacc_pv1_forecast_tomorrow_total
+# - sensor.smacc_pv2_forecast_current_hour
+# - sensor.smacc_pv2_forecast_next_hour
+# - sensor.smacc_pv2_forecast_today_total
+# - sensor.smacc_pv2_forecast_today_remaining
+# - sensor.smacc_pv2_forecast_tomorrow_total
+# - sensor.smacc_pv3_forecast_current_hour
+# - sensor.smacc_pv3_forecast_next_hour
+# - sensor.smacc_pv3_forecast_today_total
+# - sensor.smacc_pv3_forecast_today_remaining
+# - sensor.smacc_pv3_forecast_tomorrow_total
+#
+# Modbus-Platzhalter:
+# - hub: smacc_modbus_hub
+# - slave: 1  # Beispielwert, an eigenes Setup anpassen
+#
 input_boolean:
   sma_akku_ladesteuerung_aktiv:
     name: SMA Akku Ladesteuerung aktiv
@@ -383,21 +412,21 @@ sql:
         SELECT AVG(s.mean) AS day_mean
         FROM statistics_short_term s
         JOIN statistics_meta m ON s.metadata_id = m.id
-        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+        WHERE m.statistic_id = 'sensor.smacc_pv_power_total'
           AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=1)) }}
           AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=1) + timedelta(minutes=30)) }}
         UNION ALL
         SELECT AVG(s.mean) AS day_mean
         FROM statistics_short_term s
         JOIN statistics_meta m ON s.metadata_id = m.id
-        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+        WHERE m.statistic_id = 'sensor.smacc_pv_power_total'
           AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=2)) }}
           AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=2) + timedelta(minutes=30)) }}
         UNION ALL
         SELECT AVG(s.mean) AS day_mean
         FROM statistics_short_term s
         JOIN statistics_meta m ON s.metadata_id = m.id
-        WHERE m.statistic_id = 'sensor.pv_produktion_gesamt'
+        WHERE m.statistic_id = 'sensor.smacc_pv_power_total'
           AND s.start_ts >= {{ as_timestamp(slot_now - timedelta(days=3)) }}
           AND s.start_ts < {{ as_timestamp(slot_now - timedelta(days=3) + timedelta(minutes=30)) }}
       ) t
@@ -450,18 +479,18 @@ template:
         icon: mdi:home-lightning-bolt
         availability: >
           {{
-            states('sensor.pv_produktion_gesamt') | is_number and
-            states('sensor.shm2_em_metering_power_absorbed') | is_number and
-            states('sensor.shm2_em_metering_power_supplied') | is_number and
-            states('sensor.sn_3012402082_battery_power_discharge_total_3') | is_number and
-            states('sensor.sn_3012402082_battery_power_charge_total_3') | is_number
+            states('sensor.smacc_pv_power_total') | is_number and
+            states('sensor.smacc_grid_import_power') | is_number and
+            states('sensor.smacc_grid_export_power') | is_number and
+            states('sensor.smacc_battery_discharge_power') | is_number and
+            states('sensor.smacc_battery_charge_power') | is_number
           }}
         state: >
-          {% set pv = states('sensor.pv_produktion_gesamt') | float(0) %}
-          {% set netzbezug = states('sensor.shm2_em_metering_power_absorbed') | float(0) %}
-          {% set einspeisung = states('sensor.shm2_em_metering_power_supplied') | float(0) %}
-          {% set batterie_entladung = states('sensor.sn_3012402082_battery_power_discharge_total_3') | float(0) %}
-          {% set batterie_ladung = states('sensor.sn_3012402082_battery_power_charge_total_3') | float(0) %}
+          {% set pv = states('sensor.smacc_pv_power_total') | float(0) %}
+          {% set netzbezug = states('sensor.smacc_grid_import_power') | float(0) %}
+          {% set einspeisung = states('sensor.smacc_grid_export_power') | float(0) %}
+          {% set batterie_entladung = states('sensor.smacc_battery_discharge_power') | float(0) %}
+          {% set batterie_ladung = states('sensor.smacc_battery_charge_power') | float(0) %}
           {% set hausverbrauch = pv + netzbezug + batterie_entladung - einspeisung - batterie_ladung %}
           {{ [hausverbrauch, 0] | max | round(0) }}
 
@@ -493,9 +522,9 @@ template:
         state: >
           {{
             (
-              states('sensor.energy_production_today_remaining') | float(0)
-              + states('sensor.energy_production_today_remaining_2') | float(0)
-              + states('sensor.energy_production_today_remaining_3') | float(0)
+              states('sensor.smacc_pv1_forecast_today_remaining') | float(0)
+              + states('sensor.smacc_pv2_forecast_today_remaining') | float(0)
+              + states('sensor.smacc_pv3_forecast_today_remaining') | float(0)
             ) | round(2)
           }}
 
@@ -506,9 +535,9 @@ template:
         state: >
           {{
             (
-              states('sensor.energy_production_today') | float(0)
-              + states('sensor.energy_production_today_2') | float(0)
-              + states('sensor.energy_production_today_3') | float(0)
+              states('sensor.smacc_pv1_forecast_today_total') | float(0)
+              + states('sensor.smacc_pv2_forecast_today_total') | float(0)
+              + states('sensor.smacc_pv3_forecast_today_total') | float(0)
             ) | round(2)
           }}
 
@@ -519,9 +548,9 @@ template:
         state: >
           {{
             (
-              states('sensor.energy_production_tomorrow') | float(0)
-              + states('sensor.energy_production_tomorrow_2') | float(0)
-              + states('sensor.energy_production_tomorrow_3') | float(0)
+              states('sensor.smacc_pv1_forecast_tomorrow_total') | float(0)
+              + states('sensor.smacc_pv2_forecast_tomorrow_total') | float(0)
+              + states('sensor.smacc_pv3_forecast_tomorrow_total') | float(0)
             ) | round(2)
           }}
 
@@ -532,9 +561,9 @@ template:
         state: >
           {{
             (
-              states('sensor.energy_current_hour') | float(0)
-              + states('sensor.energy_current_hour_2') | float(0)
-              + states('sensor.energy_current_hour_3') | float(0)
+              states('sensor.smacc_pv1_forecast_current_hour') | float(0)
+              + states('sensor.smacc_pv2_forecast_current_hour') | float(0)
+              + states('sensor.smacc_pv3_forecast_current_hour') | float(0)
             ) | round(2)
           }}
 
@@ -545,9 +574,9 @@ template:
         state: >
           {{
             (
-              states('sensor.energy_next_hour') | float(0)
-              + states('sensor.energy_next_hour_2') | float(0)
-              + states('sensor.energy_next_hour_3') | float(0)
+              states('sensor.smacc_pv1_forecast_next_hour') | float(0)
+              + states('sensor.smacc_pv2_forecast_next_hour') | float(0)
+              + states('sensor.smacc_pv3_forecast_next_hour') | float(0)
             ) | round(2)
           }}
 
@@ -557,9 +586,9 @@ template:
         icon: mdi:solar-power
         state: >
           {% set anteil = (60 - now().minute) / 60 %}
-          {% set f1 = (states('sensor.energy_current_hour') | float(0) * anteil) + states('sensor.energy_next_hour') | float(0) %}
-          {% set f2 = (states('sensor.energy_current_hour_2') | float(0) * anteil) + states('sensor.energy_next_hour_2') | float(0) %}
-          {% set f3 = (states('sensor.energy_current_hour_3') | float(0) * anteil) + states('sensor.energy_next_hour_3') | float(0) %}
+          {% set f1 = (states('sensor.smacc_pv1_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv1_forecast_next_hour') | float(0) %}
+          {% set f2 = (states('sensor.smacc_pv2_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv2_forecast_next_hour') | float(0) %}
+          {% set f3 = (states('sensor.smacc_pv3_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv3_forecast_next_hour') | float(0) %}
           {% set summe = f1 + f2 + f3 %}
           {% set resttag = states('sensor.sma_akku_pv_forecast_resttag_gesamt') | float(0) %}
           {{ [summe, resttag] | min | round(2) }}
@@ -570,7 +599,7 @@ template:
         icon: mdi:solar-panel
         state: >
           {% set anteil = (60 - now().minute) / 60 %}
-          {{ ((states('sensor.energy_current_hour') | float(0) * anteil) + states('sensor.energy_next_hour') | float(0)) | round(2) }}
+          {{ ((states('sensor.smacc_pv1_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv1_forecast_next_hour') | float(0)) | round(2) }}
 
       - name: SMA Akku PV Forecast 2h Flaeche 2
         unique_id: sma_akku_pv_forecast_2h_flaeche_2
@@ -578,7 +607,7 @@ template:
         icon: mdi:solar-panel
         state: >
           {% set anteil = (60 - now().minute) / 60 %}
-          {{ ((states('sensor.energy_current_hour_2') | float(0) * anteil) + states('sensor.energy_next_hour_2') | float(0)) | round(2) }}
+          {{ ((states('sensor.smacc_pv2_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv2_forecast_next_hour') | float(0)) | round(2) }}
 
       - name: SMA Akku PV Forecast 2h Flaeche 3
         unique_id: sma_akku_pv_forecast_2h_flaeche_3
@@ -586,7 +615,7 @@ template:
         icon: mdi:solar-panel
         state: >
           {% set anteil = (60 - now().minute) / 60 %}
-          {{ ((states('sensor.energy_current_hour_3') | float(0) * anteil) + states('sensor.energy_next_hour_3') | float(0)) | round(2) }}
+          {{ ((states('sensor.smacc_pv3_forecast_current_hour') | float(0) * anteil) + states('sensor.smacc_pv3_forecast_next_hour') | float(0)) | round(2) }}
 
       - name: SMA Akku Forecast PV Leistung naechste 2h
         unique_id: sma_akku_forecast_pv_leistung_naechste_2h
@@ -650,7 +679,7 @@ template:
         state: >
           {% set pv_hist = states('sensor.sma_akku_pv_zeitslot_mittel_3d') %}
           {% set haus_hist = states('sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d') %}
-          {% set pv = (pv_hist if pv_hist | is_number else states('sensor.pv_produktion_gesamt')) | float(0) %}
+          {% set pv = (pv_hist if pv_hist | is_number else states('sensor.smacc_pv_power_total')) | float(0) %}
           {% set haus = (haus_hist if haus_hist | is_number else states('sensor.sma_akku_hausverbrauch_aktuell')) | float(0) %}
           {{ [pv - haus, 0] | max | round(0) }}
 
@@ -713,7 +742,7 @@ template:
         unit_of_measurement: "kWh"
         icon: mdi:battery-plus
         state: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(80) %}
           {% set kap = states('input_number.sma_akku_kapazitaet_kwh') | float(12.8) %}
           {{ ([ziel - soc, 0] | max / 100 * kap) | round(2) }}
@@ -774,7 +803,7 @@ template:
         device_class: timestamp
         icon: mdi:clock-start
         state: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(80) %}
           {% set benoetigt = states('sensor.sma_akku_benoetigte_ladezeit_bis_ziel') | float(99) %}
           {% set reserve = states('input_number.sma_akku_ladezeit_reserve_stunden') | float(0.5) %}
@@ -875,7 +904,7 @@ template:
         icon: mdi:clock-start
         state: >
           {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ts = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
           {% if soc >= ziel %}
             {{ none }}
@@ -928,7 +957,7 @@ template:
         unique_id: sma_akku_ziel_erreicht_sperre_aktiv
         icon: mdi:battery-lock
         state: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
           {{ soc >= ziel }}
 
@@ -936,9 +965,9 @@ template:
         unique_id: sma_akku_akku_ladt_trotz_sperre
         icon: mdi:alert-circle
         state: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
-          {% set charge = states('sensor.sn_3012402082_battery_power_charge_total_3') | float(0) %}
+          {% set charge = states('sensor.smacc_battery_charge_power') | float(0) %}
           {{ soc >= ziel and charge > 100 }}
 
       - name: SMA Akku Balancing Status
@@ -957,7 +986,7 @@ template:
         unique_id: sma_akku_entscheidung_text
         icon: mdi:text-box-check
         state: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
           {% set ziel_mittag = states('input_number.sma_akku_ziel_mittag') | float(40) %}
           {% set ladebeginn = states('sensor.sma_akku_ladebeginn_wirksames_ziel') %}
@@ -1004,7 +1033,7 @@ template:
         delay_off:
           minutes: 5
         state: >
-          {% set pv = states('sensor.pv_produktion_gesamt') | float(0) %}
+          {% set pv = states('sensor.smacc_pv_power_total') | float(0) %}
           {% set schwelle = states('input_number.sma_akku_standby_pv_schwelle_w') | float(50) %}
           {{ pv <= schwelle }}
 
@@ -1039,7 +1068,7 @@ script:
 
             Akku laedt trotz Sperre: {{ states('sensor.sma_akku_akku_ladt_trotz_sperre') }}
 
-            Akku Ladeleistung aktuell: {{ states('sensor.sn_3012402082_battery_power_charge_total_3') }} W
+            Akku Ladeleistung aktuell: {{ states('sensor.smacc_battery_charge_power') }} W
 
 
             ## Ladebeginn / Zielzeit
@@ -1073,7 +1102,7 @@ script:
 
             ## Akku / Ziel
 
-            SOC aktuell: {{ states('sensor.sn_3012402082_battery_soc_total_3') }} %
+            SOC aktuell: {{ states('sensor.smacc_battery_soc') }} %
 
             Aktuelles Ladeziel-SOC: {{ states('sensor.sma_akku_aktuelles_ladeziel_soc') }} %
 
@@ -1094,7 +1123,7 @@ script:
 
             ## Forecast / Verbrauch
 
-            PV-Produktion aktuell: {{ states('sensor.pv_produktion_gesamt') }} W
+            PV-Produktion aktuell: {{ states('sensor.smacc_pv_power_total') }} W
 
             Forecast Resttag gesamt: {{ states('sensor.sma_akku_pv_forecast_resttag_gesamt') }} kWh
 
@@ -1180,8 +1209,8 @@ script:
     sequence:
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40793
           value:
             - 0
@@ -1190,8 +1219,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40795
           value:
             - 0
@@ -1200,8 +1229,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40797
           value:
             - 0
@@ -1210,8 +1239,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40799
           value:
             - 0
@@ -1220,8 +1249,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40801
           value:
             - 0
@@ -1230,8 +1259,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40236
           value:
             - 0
@@ -1254,8 +1283,8 @@ script:
     sequence:
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40793
           value:
             - 0
@@ -1264,8 +1293,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40795
           value:
             - 0
@@ -1274,8 +1303,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40797
           value:
             - 0
@@ -1284,8 +1313,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40799
           value:
             - 0
@@ -1294,8 +1323,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40801
           value:
             - 0
@@ -1304,8 +1333,8 @@ script:
           milliseconds: 300
       - service: modbus.write_register
         data:
-          hub: sma_stp10se
-          slave: 3
+          hub: smacc_modbus_hub
+          slave: 1
           address: 40236
           value:
             - 0
@@ -1347,7 +1376,7 @@ automation:
           - binary_sensor.sma_akku_laden_soll_erlaubt_sein
           - binary_sensor.sma_akku_pv_standby_aktiv
           - binary_sensor.sma_ev_akku_verriegelung_soll_aktiv_sein
-          - sensor.sn_3012402082_battery_soc_total_3
+          - sensor.smacc_battery_soc
           - sensor.sma_akku_aktuelles_ladeziel_soc
           - sensor.sma_akku_dynamisches_ziel_soc
           - sensor.sma_ev_akku_entladeleistung_ziel
@@ -1405,7 +1434,7 @@ automation:
           trigger_art: "{{ trigger.id | default('unknown') }}"
           standby_aktiv: "{{ is_state('binary_sensor.sma_akku_pv_standby_aktiv', 'on') }}"
           laden_erlauben: "{{ is_state('binary_sensor.sma_akku_laden_soll_erlaubt_sein', 'on') }}"
-          soc: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) }}"
+          soc: "{{ states('sensor.smacc_battery_soc') | float(0) }}"
           ziel: "{{ states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) }}"
           entscheidung: "{{ states('sensor.sma_akku_entscheidung_text') }}"
           letzter_status: "{{ states('input_text.sma_akku_ladestatus') }}"
@@ -1508,7 +1537,7 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - sensor.sn_3012402082_battery_soc_total_3
+          - sensor.smacc_battery_soc
           - sensor.sma_akku_aktuelles_ladeziel_soc
           - sensor.sma_akku_dynamisches_ziel_soc
     condition:
@@ -1520,7 +1549,7 @@ automation:
         state: "off"
       - condition: template
         value_template: >
-          {% set soc = states('sensor.sn_3012402082_battery_soc_total_3') | float(0) %}
+          {% set soc = states('sensor.smacc_battery_soc') | float(0) %}
           {% set ziel = states('sensor.sma_akku_aktuelles_ladeziel_soc') | float(40) %}
           {{ soc >= ziel }}
     action:
@@ -1539,7 +1568,7 @@ automation:
       - platform: template
         value_template: >
           {{
-            states('sensor.pv_produktion_gesamt') | float(0)
+            states('sensor.smacc_pv_power_total') | float(0)
             < states('input_number.sma_akku_pv_ende_schwelle_w') | float(950)
           }}
         for:
@@ -1558,7 +1587,7 @@ automation:
         target:
           entity_id: input_number.sma_akku_soc_bei_pv_ende
         data:
-          value: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) | round(1) }}"
+          value: "{{ states('sensor.smacc_battery_soc') | float(0) | round(1) }}"
 
   - alias: SMA Akku stabilen PV Start erkennen
     id: sma_akku_stabilen_pv_start_erkennen
@@ -1568,7 +1597,7 @@ automation:
       - platform: template
         value_template: >
           {{
-            states('sensor.pv_produktion_gesamt') | float(0)
+            states('sensor.smacc_pv_power_total') | float(0)
             > states('input_number.sma_akku_pv_stabil_schwelle_w') | float(800)
           }}
         for:
@@ -1580,7 +1609,7 @@ automation:
     action:
       - variables:
           soc_ende: "{{ states('input_number.sma_akku_soc_bei_pv_ende') | float(0) }}"
-          soc_start: "{{ states('sensor.sn_3012402082_battery_soc_total_3') | float(0) }}"
+          soc_start: "{{ states('sensor.smacc_battery_soc') | float(0) }}"
           kapazitaet: "{{ states('input_number.sma_akku_kapazitaet_kwh') | float(12.8) }}"
           soc_verlust: "{{ [soc_ende - soc_start, 0] | max }}"
           kwh_verlust: "{{ (([soc_ende - soc_start, 0] | max) / 100 * kapazitaet) }}"
@@ -1655,7 +1684,7 @@ automation:
     max_exceeded: silent
     trigger:
       - platform: numeric_state
-        entity_id: sensor.sn_3012402082_battery_soc_total_3
+        entity_id: sensor.smacc_battery_soc
         above: 99.4
     condition:
       - condition: state
