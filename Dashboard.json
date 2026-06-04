@@ -1,0 +1,763 @@
+{
+  "views": [
+    {
+      "title": "SMACC",
+      "path": "smacc",
+      "icon": "mdi:battery-charging",
+      "type": "sections",
+      "max_columns": 3,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "markdown",
+              "content": "# SMACC Dashboard\n\n**Status:** {{ states('sensor.sma_akku_entscheidung_text') }}\n\n**Aktuelles Ziel:** {% set nach_mittag = now() >= today_at('12:00:00') %}{% set soc = states('sensor.smacc_battery_soc') | float(0) %}{% set ziel = states('sensor.sma_akku_dynamisches_ziel_soc') | float(0) %}{% if nach_mittag %}{% if soc >= ziel %}Tagesziel erreicht: {{ ziel | round(0) }} %{% else %}Tagesziel: {{ ziel | round(0) }} %{% endif %}{% else %}{{ states('sensor.sma_akku_aktuelles_ladeziel_text') }}{% endif %}\n\n**Ladebeginn aktuelles Ziel:** {{ states('sensor.sma_akku_ladebeginn_prognose_text') }}\n\n**Ladebeginn Tagesziel:** {{ states('sensor.sma_akku_ladebeginn_wirksames_ziel_text') }}\n\n**PV Zeitslot Mittel 3d:** {{ states('sensor.sma_akku_pv_zeitslot_mittel_3d') }} W\n\n**Hausverbrauch Zeitslot Mittel 3d:** {{ states('sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d') }} W\n\n**Erwartete Ladeleistung Zeitslot 3d:** {{ states('sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d') }} W\n\n**Erwartete Ladeleistung 2h (Vergleich):** {{ states('sensor.sma_akku_erwartete_ladeleistung_naechste_2h') }} W\n\n**Fehlende Energie Tagesziel:** {{ states('sensor.sma_akku_fehlende_energie_bis_ziel') }} kWh\n\n**Benötigte Ladezeit Tagesziel:** {{ states('sensor.sma_akku_benoetigte_ladezeit_bis_ziel') }} h\n\n**Zielzeit:** {{ states('sensor.sma_akku_zielzeit_effektiv_text') }}\n\n**SOC:** {{ states('sensor.smacc_battery_soc') }} %\n\n**Tagesziel:** {{ states('sensor.sma_akku_dynamisches_ziel_soc') }} %\n\n**Modbus-Status:** {{ states('input_text.sma_akku_ladestatus') }}\n\n**Modbus-Timer:** {{ states('timer.sma_akku_modbus_refresh') }}\n"
+            },
+            {
+              "type": "grid",
+              "columns": 2,
+              "square": false,
+              "cards": [
+                {
+                  "type": "gauge",
+                  "entity": "sensor.smacc_battery_soc",
+                  "name": "Batterie SOC",
+                  "min": 0,
+                  "max": 100,
+                  "severity": {
+                    "green": 70,
+                    "yellow": 30,
+                    "red": 0
+                  }
+                },
+                {
+                  "type": "gauge",
+                  "entity": "sensor.sma_akku_dynamisches_ziel_soc",
+                  "name": "Tagesziel",
+                  "min": 0,
+                  "max": 100,
+                  "severity": {
+                    "green": 70,
+                    "yellow": 40,
+                    "red": 0
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Zentrale Steuerparameter",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_boolean.sma_akku_ladesteuerung_aktiv",
+                  "name": "Ladesteuerung aktiv"
+                },
+                {
+                  "entity": "input_boolean.sma_akku_ladephase_bis_ziel_aktiv",
+                  "name": "Ladephase bis Ziel aktiv"
+                },
+                {
+                  "entity": "binary_sensor.sma_akku_pv_standby_aktiv"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "input_number.sma_akku_ziel_mittag",
+                  "name": "Mittagsziel"
+                },
+                {
+                  "entity": "input_number.sma_akku_ziel_tagesende",
+                  "name": "Tagesziel Basis"
+                },
+                {
+                  "entity": "input_number.sma_akku_ziel_hysterese",
+                  "name": "Ziel-Hysterese"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_soc",
+                  "name": "Interne Zielanzeige SOC"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_text",
+                  "name": "Interne Zielanzeige"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_grund",
+                  "name": "Interner Grund aktuelles Ladeziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_dynamisches_ziel_soc",
+                  "name": "Tagesziel SOC"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Zielzeit / Ladefenster",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_boolean.sma_akku_zielzeit_dynamisch_aktiv",
+                  "name": "Zielzeit dynamisch nach PV-Ende"
+                },
+                {
+                  "entity": "input_datetime.sma_akku_ziel_erreicht_zeit",
+                  "name": "Manuelle Zielzeit"
+                },
+                {
+                  "entity": "sensor.sma_akku_zielzeit_effektiv_text",
+                  "name": "Effektive Zielzeit"
+                },
+                {
+                  "entity": "input_number.sma_akku_zielzeit_puffer_vor_pv_ende_minuten",
+                  "name": "Puffer vor PV-Ende"
+                },
+                {
+                  "entity": "input_number.sma_akku_zielzeit_sicherheitsreserve_minuten",
+                  "name": "Zielzeit Sicherheitsreserve"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "input_datetime.sma_akku_ladephase_fruehestens_zeit",
+                  "name": "Ladephase frühestens ab"
+                },
+                {
+                  "entity": "input_datetime.sma_akku_ladephase_spaetestens_zeit",
+                  "name": "Ladephase spätestens bis"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_wirksames_ziel_text",
+                  "name": "Ladebeginn Tagesziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_prognose_text",
+                  "name": "Ladebeginn aktuelles Ziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_in_minuten",
+                  "name": "Start in Minuten (aktuelles Ziel)"
+                },
+                {
+                  "entity": "sensor.sma_akku_benoetigte_ladezeit_bis_ziel",
+                  "name": "Benötigte Ladezeit Tagesziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d",
+                  "name": "Erwartete Ladeleistung Zeitslot 3d"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Ladeparameter",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_number.sma_akku_ladeleistung_max",
+                  "name": "Max. Ladeleistung"
+                },
+                {
+                  "entity": "input_number.sma_akku_entladeleistung_max",
+                  "name": "Max. Entladeleistung"
+                },
+                {
+                  "entity": "input_number.sma_akku_min_ladeueberschuss_w",
+                  "name": "Min. erwartete Ladeleistung"
+                },
+                {
+                  "entity": "input_number.sma_akku_ladezeit_reserve_stunden",
+                  "name": "Ladezeitreserve"
+                },
+                {
+                  "entity": "input_number.sma_akku_ladewirkungsgrad",
+                  "name": "Ladewirkungsgrad"
+                },
+                {
+                  "entity": "input_number.sma_akku_kapazitaet_kwh",
+                  "name": "Akku-Kapazität"
+                },
+                {
+                  "entity": "input_number.sma_akku_hausverbrauch_faktor",
+                  "name": "Hausverbrauch Prognosefaktor"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Modbus Steuerung",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_text.sma_akku_ladestatus",
+                  "name": "Letzter geschriebener Status"
+                },
+                {
+                  "entity": "timer.sma_akku_modbus_refresh",
+                  "name": "Modbus Refresh Timer"
+                },
+                {
+                  "entity": "automation.sma_akku_cmpbms_ladesteuerung_dynamisch",
+                  "name": "BMS Ladesteuerung dynamisch"
+                },
+                {
+                  "entity": "automation.sma_akku_ziel_erreicht_hart_sperren",
+                  "name": "Ziel erreicht hart sperren"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "script.sma_akku_cmpbms_laden_erlauben",
+                  "name": "BMS Laden erlauben"
+                },
+                {
+                  "entity": "script.sma_akku_cmpbms_laden_sperren",
+                  "name": "BMS Laden sperren"
+                }
+              ]
+            },
+            {
+              "type": "markdown",
+              "content": "## Modbus-Regel\n\n**Sofort schreiben nur bei:**\n\n- HA-Start\n- Timerablauf\n- echtem Statuswechsel\n- relevanter Ziel-/Helferänderung\n\n**Kein Trigger auf:**\n\n- Entscheidungstext\n- Ladestatus\n- schnell schwankende Leistungswerte\n- Forecast-Leistungswerte\n\n**Standby:** kein Modbus-Schreiben.\n"
+            },
+            {
+              "type": "entities",
+              "title": "Sperren / Schutz",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "binary_sensor.sma_akku_laden_soll_erlaubt_sein",
+                  "name": "Laden soll erlaubt sein"
+                },
+                {
+                  "entity": "binary_sensor.sma_akku_ladezeit_reicht_noch",
+                  "name": "Ladezeit reicht noch"
+                },
+                {
+                  "entity": "sensor.sma_akku_ziel_erreicht_sperre_aktiv",
+                  "name": "Ziel-erreicht-Sperre aktiv"
+                },
+                {
+                  "entity": "sensor.sma_akku_akku_laedt_trotz_sperre",
+                  "name": "Akku lädt trotz Sperre"
+                },
+                {
+                  "entity": "sensor.smacc_battery_charge_power",
+                  "name": "Batterie lädt"
+                },
+                {
+                  "entity": "sensor.smacc_battery_discharge_power",
+                  "name": "Batterie entlädt"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Diagnose",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "script.sma_akku_diagnose_anzeigen",
+                  "name": "Diagnose anzeigen"
+                },
+                {
+                  "entity": "sensor.sma_akku_entscheidung_text",
+                  "name": "Entscheidung"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_prognose_text",
+                  "name": "Ladebeginn aktuelles Ziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_uhrzeit",
+                  "name": "Uhrzeit aktuelles Ziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_ladebeginn_wirksames_ziel_text",
+                  "name": "Ladebeginn Tagesziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_zielzeit_effektiv_text",
+                  "name": "Zielzeit"
+                },
+                {
+                  "entity": "sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d",
+                  "name": "Erwartete Ladeleistung Zeitslot 3d"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_zeitslot_mittel_3d",
+                  "name": "PV Zeitslot Mittel 3d"
+                },
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d",
+                  "name": "Hausverbrauch Zeitslot Mittel 3d"
+                },
+                {
+                  "entity": "sensor.sma_akku_erwartete_ladeleistung_naechste_2h",
+                  "name": "Erwartete Ladeleistung 2h (Vergleich)"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Akku / Ziel",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.smacc_battery_soc",
+                  "name": "Batterie SOC"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_soc",
+                  "name": "Interne Zielanzeige SOC"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_text",
+                  "name": "Interne Zielanzeige Text"
+                },
+                {
+                  "entity": "sensor.sma_akku_aktuelles_ladeziel_grund",
+                  "name": "Interne Zielanzeige Grund"
+                },
+                {
+                  "entity": "sensor.sma_akku_dynamisches_ziel_soc",
+                  "name": "Tagesziel SOC"
+                },
+                {
+                  "entity": "sensor.sma_akku_fehlende_energie_bis_ziel",
+                  "name": "Fehlende Energie bis Ziel"
+                },
+                {
+                  "entity": "sensor.sma_akku_benoetigte_ladezeit_bis_ziel",
+                  "name": "Benötigte Ladezeit Tagesziel"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Nachtziel",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_boolean.sma_akku_nachtziel_aktiv",
+                  "name": "Nachtziel aktiv"
+                },
+                {
+                  "entity": "input_number.sma_akku_rest_soc_pv_start",
+                  "name": "Gewünschter Rest-SOC morgens"
+                },
+                {
+                  "entity": "input_number.sma_akku_nachtreserve_soc",
+                  "name": "Zusätzliche Nachtreserve"
+                },
+                {
+                  "entity": "input_number.sma_akku_nachtziel_min_soc",
+                  "name": "Nachtziel Minimum"
+                },
+                {
+                  "entity": "input_number.sma_akku_nachtziel_max_soc",
+                  "name": "Nachtziel Maximum"
+                },
+                {
+                  "entity": "sensor.sma_akku_nachtziel_soc",
+                  "name": "Berechnetes Nachtziel SOC"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Nachtmessung",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_datetime.sma_akku_pv_ende_letzte",
+                  "name": "Letztes PV-Ende"
+                },
+                {
+                  "entity": "input_datetime.sma_akku_pv_start_stabil_letzte",
+                  "name": "Letzter stabiler PV-Start"
+                },
+                {
+                  "entity": "input_number.sma_akku_soc_bei_pv_ende",
+                  "name": "SOC bei PV-Ende"
+                },
+                {
+                  "entity": "input_number.sma_akku_soc_bei_pv_start_stabil",
+                  "name": "SOC bei stabilem PV-Start"
+                },
+                {
+                  "entity": "input_number.sma_akku_nacht_soc_verlust_letzte",
+                  "name": "Letzter Nacht-SOC-Verlust"
+                },
+                {
+                  "entity": "sensor.sma_akku_nacht_soc_verlust_prognose",
+                  "name": "Nacht-SOC-Verlust Prognose"
+                },
+                {
+                  "entity": "input_number.sma_akku_nacht_soc_verlust_fallback",
+                  "name": "Nacht-SOC-Verlust Mittel 7 Tage"
+                },
+                {
+                  "entity": "input_number.sma_akku_nachtverbrauch_kwh_letzte",
+                  "name": "Letzter Nachtverbrauch"
+                },
+                {
+                  "entity": "input_number.sma_akku_nacht_soc_verlust_fallback",
+                  "name": "Nacht-SOC-Verlust Fallback"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Morgen-Forecast / Balancing",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_boolean.sma_akku_morgen_forecast_aktiv",
+                  "name": "Morgen-Forecast Zielanhebung aktiv"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_morgen_gesamt",
+                  "name": "Forecast morgen gesamt"
+                },
+                {
+                  "entity": "input_number.sma_akku_morgen_forecast_schwelle_mittel",
+                  "name": "Schwelle morgen mittel"
+                },
+                {
+                  "entity": "input_number.sma_akku_morgen_forecast_schwelle_schlecht",
+                  "name": "Schwelle morgen schlecht"
+                },
+                {
+                  "entity": "input_number.sma_akku_ziel_morgen_mittel",
+                  "name": "Ziel morgen mittel"
+                },
+                {
+                  "entity": "input_number.sma_akku_ziel_morgen_schlecht",
+                  "name": "Ziel morgen schlecht"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "input_boolean.sma_akku_balancing_100",
+                  "name": "Balancing 100 % manuell"
+                },
+                {
+                  "entity": "input_boolean.sma_akku_balancing_woechentlich",
+                  "name": "Balancing wöchentlich automatisch"
+                },
+                {
+                  "entity": "input_select.sma_akku_balancing_wochentag",
+                  "name": "Balancing Wochentag"
+                },
+                {
+                  "entity": "input_datetime.sma_akku_balancing_startzeit",
+                  "name": "Balancing Startzeit"
+                },
+                {
+                  "entity": "input_number.sma_akku_balancing_min_restforecast_kwh",
+                  "name": "Balancing Mindest-Restforecast"
+                },
+                {
+                  "entity": "sensor.sma_akku_balancing_status",
+                  "name": "Balancing Status"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "PV aktuell / Erkennung",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.smacc_pv_power_total",
+                  "name": "PV Gesamtleistung"
+                },
+                {
+                  "entity": "binary_sensor.sma_akku_pv_standby_aktiv",
+                  "name": "PV-Standby aktiv"
+                },
+                {
+                  "entity": "input_number.sma_akku_standby_pv_schwelle_w",
+                  "name": "PV-Standby Schwelle"
+                },
+                {
+                  "entity": "input_number.sma_akku_pv_ende_schwelle_w",
+                  "name": "PV-Ende Schwelle"
+                },
+                {
+                  "entity": "input_number.sma_akku_pv_stabil_schwelle_w",
+                  "name": "Stabiler PV-Start Schwelle"
+                },
+                {
+                  "entity": "input_number.sma_akku_pv_reststunden_max",
+                  "name": "PV-Reststunden Maximum"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "PV-Forecast Gesamt",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_resttag_gesamt",
+                  "name": "Forecast Resttag gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_heute_gesamt",
+                  "name": "Forecast heute gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_morgen_gesamt",
+                  "name": "Forecast morgen gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_diese_stunde_gesamt",
+                  "name": "Forecast diese Stunde gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_naechste_stunde_gesamt",
+                  "name": "Forecast nächste Stunde gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_2h_gesamt",
+                  "name": "Forecast 2h gesamt"
+                },
+                {
+                  "entity": "sensor.sma_akku_forecast_pv_leistung_naechste_2h",
+                  "name": "Forecast PV-Leistung nächste 2h"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_reststunden_geschaetzt",
+                  "name": "PV-Reststunden geschätzt"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "PV-Forecast je Fläche",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_2h_flache_1",
+                  "name": "Forecast 2h Fläche 1"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_2h_flache_2",
+                  "name": "Forecast 2h Fläche 2"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_forecast_2h_flache_3",
+                  "name": "Forecast 2h Fläche 3"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "entity": "sensor.smacc_pv1_forecast_current_hour",
+                  "name": "PV Fläche 1 Forecast aktuelle Stunde"
+                },
+                {
+                  "entity": "sensor.smacc_pv1_forecast_next_hour",
+                  "name": "PV Fläche 1 Forecast nächste Stunde"
+                },
+                {
+                  "entity": "sensor.smacc_pv2_forecast_current_hour",
+                  "name": "PV Fläche 2 Forecast aktuelle Stunde"
+                },
+                {
+                  "entity": "sensor.smacc_pv2_forecast_next_hour",
+                  "name": "PV Fläche 2 Forecast nächste Stunde"
+                },
+                {
+                  "entity": "sensor.smacc_pv3_forecast_current_hour",
+                  "name": "PV Fläche 3 Forecast aktuelle Stunde"
+                },
+                {
+                  "entity": "sensor.smacc_pv3_forecast_next_hour",
+                  "name": "PV Fläche 3 Forecast nächste Stunde"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Hausverbrauch",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_aktuell",
+                  "name": "Hausverbrauch aktuell"
+                },
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_mittel_3h",
+                  "name": "Hausverbrauch Mittel 3h"
+                },
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_mittel_7d",
+                  "name": "Hausverbrauch Mittel 7 Tage"
+                },
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_prognoseleistung",
+                  "name": "Hausverbrauch Prognoseleistung"
+                },
+                {
+                  "entity": "sensor.sma_akku_hausverbrauch_zeitslot_mittel_3d",
+                  "name": "Hausverbrauch Zeitslot Mittel 3d"
+                },
+                {
+                  "entity": "input_number.sma_akku_hausverbrauch_faktor",
+                  "name": "Hausverbrauch Prognosefaktor"
+                }
+              ]
+            },
+            {
+              "type": "entities",
+              "title": "Forecast / Zeitschnitt abzüglich Verbrauch",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "sensor.sma_akku_erwarteter_verbrauch_bis_pv_ende",
+                  "name": "Erwarteter Verbrauch bis PV-Ende"
+                },
+                {
+                  "entity": "sensor.sma_akku_nutzbarer_forecast_fuer_akku",
+                  "name": "Nutzbarer Forecast für Akku"
+                },
+                {
+                  "entity": "sensor.sma_akku_pv_zeitslot_mittel_3d",
+                  "name": "PV Zeitslot Mittel 3d"
+                },
+                {
+                  "entity": "sensor.sma_akku_erwartete_ladeleistung_zeitslot_3d",
+                  "name": "Erwartete Ladeleistung Zeitslot 3d"
+                },
+                {
+                  "entity": "sensor.sma_akku_erwartete_ladeleistung_naechste_2h",
+                  "name": "Erwartete Ladeleistung 2h (Vergleich)"
+                },
+                {
+                  "entity": "input_number.sma_akku_forecast_sicherheitsfaktor",
+                  "name": "Forecast Sicherheitsfaktor"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "EV-Akku-Verriegelung",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_boolean.sma_ev_akku_verriegelung_aktiv",
+                  "name": "EV Akku-Verriegelung aktiv"
+                },
+                {
+                  "entity": "binary_sensor.sma_ev_akku_verriegelung_soll_aktiv_sein",
+                  "name": "Verriegelung soll aktiv sein"
+                },
+                {
+                  "entity": "sensor.sma_ev_akku_verriegelung_status",
+                  "name": "Verriegelung Status"
+                },
+                {
+                  "entity": "sensor.sma_ev_lademodus_aktuell",
+                  "name": "EV-Lademodus aktuell"
+                },
+                {
+                  "entity": "sensor.sma_ev_lademodus_text",
+                  "name": "EV-Lademodus Text"
+                },
+                {
+                  "entity": "select.smacc_wallbox_operating_mode_of_charge_session",
+                  "name": "Wallbox Betriebsart"
+                },
+                {
+                  "entity": "sensor.smacc_wallbox_charging_power",
+                  "name": "Wallbox Ladeleistung"
+                },
+                {
+                  "entity": "sensor.smacc_wallbox_charging_session_energy",
+                  "name": "Wallbox Sitzungsenergie"
+                },
+                {
+                  "entity": "sensor.sma_ev_hausverbrauch_ohne_auto",
+                  "name": "Hausverbrauch ohne Auto"
+                },
+                {
+                  "entity": "sensor.sma_ev_pv_ueberschuss_fuer_auto",
+                  "name": "PV-Überschuss fürs Auto"
+                },
+                {
+                  "entity": "sensor.sma_ev_pv_defizit_auto",
+                  "name": "PV-Defizit Auto"
+                },
+                {
+                  "entity": "sensor.sma_ev_akku_entladeleistung_ziel",
+                  "name": "Akku-Entladeleistung Ziel"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "entities",
+              "title": "Wetter",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "weather.local_weather",
+                  "name": "Open-Meteo Wetter"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "smacc_export_note": "Anonymized export for sharing; entity ids and device-specific labels replaced with placeholders."
+}
