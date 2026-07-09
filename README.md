@@ -3,8 +3,8 @@
 > Home-Assistant-Package zur nachvollziehbaren und aktiven Ladefreigabe von SMA-/BYD-Batteriesystemen.
 
 ⚠️ **Disclaimer:** Dieses Projekt wird nicht von SMA, BYD oder einem Hersteller begleitet oder supportet. Nutzung auf eigene Gefahr. Wer Modbus-Schreibzugriffe aktiviert, greift aktiv in das Ladeverhalten des Systems ein. Vor produktivem Einsatz müssen Register, Werte, Entitäten und Sicherheitsgrenzen zum eigenen Wechselrichter-/Batterie-Setup passen.
-<img width="1492" height="1136" alt="image" src="https://github.com/user-attachments/assets/b1f8c182-7ce8-4974-9644-a73d6108fedf" />
 
+<img width="1492" height="1136" alt="image" src="https://github.com/user-attachments/assets/b1f8c182-7ce8-4974-9644-a73d6108fedf" />
 
 ## Wichtiger Hinweis zur Git-Version
 
@@ -557,6 +557,30 @@ Vor produktiver Nutzung sollte man zwingend prüfen:
 - Wird bei Standby nicht unnötig geschrieben?
 - Verhält sich die Anlage nach Home-Assistant-Neustart korrekt?
 - Ist klar, was bei fehlenden Forecast-/SQL-Werten passiert?
+
+## Hinweis zu wechselrichterinternem Eigenladen
+
+In einzelnen SMA-/BYD-Setups kann es vorkommen, dass der Wechselrichter trotz aktiver SMACC-Sperre und trotz fehlerfreier Modbus-Schreibzyklen eigenständig lädt.
+
+Beobachtet wurde dieses Verhalten insbesondere in diesen Situationen:
+
+- interne Einspeisebegrenzung / Abregelung des Wechselrichters, z. B. Status `2119`
+- Zähler- oder Kommunikationsverlust zum Energiezähler
+- andauernde Abregelung über längere Zeit
+
+Dabei können externe Vorgaben wie `OpMod` und `BatChaMaxW` vom Wechselrichter ignoriert werden, obwohl Home Assistant beziehungsweise SMACC weiterhin erfolgreich schreibt und keine Modbus-Fehler meldet.
+
+Das ist nach aktueller Erfahrung kein SMACC- oder Adapter-Fehler, sondern ein wechselrichterinternes Sicherheits- beziehungsweise Schutzverhalten. Die Anti-Inselnetz-, Zähler- und Einspeisebegrenzungslogik des Wechselrichters kann externe BMS-/Modbus-Steuerung übersteuern.
+
+Wenn also unerklärliches Eigenladen trotz Status `Laden gesperrt` auftritt, sollte nicht zuerst die SMACC-Logik verdächtigt werden. Sinnvoll ist dann zuerst die Prüfung von:
+
+- Wechselrichter-Events und Statusmeldungen
+- Status `2119` beziehungsweise Abregelung
+- Kommunikation zum Energiezähler / Smart Meter
+- Einspeisebegrenzung und Netzmanagement-Einstellungen
+- tatsächlichen Registerwerten im Wechselrichter
+
+Dieser Hinweis basiert auf reproduzierter Praxiserfahrung mit demselben Wechselrichter-Typ und einem weiteren Community-Bericht mit vergleichbarem Symptom. Je nach Firmware, SMA-Modell und Anlagenkonfiguration kann sich das Verhalten unterscheiden.
 
 ## Bekannte Grenzen
 
