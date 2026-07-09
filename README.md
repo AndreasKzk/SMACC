@@ -3,6 +3,7 @@
 > Home-Assistant-Package zur nachvollziehbaren und aktiven Ladefreigabe von SMA-/BYD-Batteriesystemen.
 
 ⚠️ **Disclaimer:** Dieses Projekt wird nicht von SMA, BYD oder einem Hersteller begleitet oder supportet. Nutzung auf eigene Gefahr. Wer Modbus-Schreibzugriffe aktiviert, greift aktiv in das Ladeverhalten des Systems ein. Vor produktivem Einsatz müssen Register, Werte, Entitäten und Sicherheitsgrenzen zum eigenen Wechselrichter-/Batterie-Setup passen.
+<img width="1309" height="1066" alt="image" src="https://github.com/user-attachments/assets/3dbc71ec-577b-4395-851e-dc9efb2639a0" />
 
 ## Wichtiger Hinweis zur Git-Version
 
