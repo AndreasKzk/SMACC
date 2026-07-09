@@ -593,31 +593,6 @@ Dieser Hinweis basiert auf reproduzierter Praxiserfahrung mit demselben Wechselr
 - Modbus-Schreibzugriffe sind hardware- und firmwareabhängig.
 - Falsche Register oder Werte können unerwünschtes Ladeverhalten auslösen.
 
-## Empfehlung für die Veröffentlichung im Repository
-
-Für Git sollten die Dateien so abgelegt werden:
-
-```text
-packages/
-  smacc.yaml
-
-dashboards/
-  smacc-dashboard.json
-
-README.md
-```
-
-Zusätzlich sinnvoll:
-
-```text
-examples/
-  entity-mapping.example.yaml
-
-docs/
-  screenshots/
-```
-
-Die Beispiel-Dateien sollten nur Platzhalter enthalten und keine echten privaten Entity-IDs, Seriennummern, IP-Adressen oder Gerätenamen.
 
 ## Ziel des Projekts
 
