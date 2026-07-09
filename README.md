@@ -5,7 +5,7 @@
 ⚠️ **Disclaimer:** Dieses Projekt wird nicht von SMA, BYD oder einem Hersteller begleitet oder supportet. Nutzung auf eigene Gefahr. Wer Modbus-Schreibzugriffe aktiviert, greift aktiv in das Ladeverhalten des Systems ein. Vor produktivem Einsatz müssen Register, Werte, Entitäten und Sicherheitsgrenzen zum eigenen Wechselrichter-/Batterie-Setup passen.
 
 ## Danksagung
-Danke an olli_at_work vom Photovoltaikforum ( https://www.photovoltaikforum.com/core/user/158859-olli-at-work/ )der mir den Tipp zur Begrenzung der Ladeleistung gegeben hat und mir generell sehr unter die Arme gegriffen hat. 
+Danke an olli_at_work vom Photovoltaikforum ( https://www.photovoltaikforum.com/core/user/158859-olli-at-work/ ) der mir den Tipp zur Begrenzung der Ladeleistung mittels Faktor gegeben hat und mir generell sehr unter die Arme gegriffen hat. 
 
 <img width="1492" height="1136" alt="image" src="https://github.com/user-attachments/assets/b1f8c182-7ce8-4974-9644-a73d6108fedf" />
 
