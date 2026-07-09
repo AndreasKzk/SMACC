@@ -4,6 +4,8 @@
 
 ⚠️ **Disclaimer:** Dieses Projekt wird nicht von SMA, BYD oder einem Hersteller begleitet oder supportet. Nutzung auf eigene Gefahr. Wer Modbus-Schreibzugriffe aktiviert, greift aktiv in das Ladeverhalten des Systems ein. Vor produktivem Einsatz müssen Register, Werte, Entitäten und Sicherheitsgrenzen zum eigenen Wechselrichter-/Batterie-Setup passen.
 
+Für BYD-Systeme sollte bevorzugt der Modus Schonladen verwendet werden. Eine reine SOC-Begrenzung ist für Zellbalance eher kontraproduktiv, weil erst bei vollständig geladenem Akku zuverlässig erkennbar ist, welche Zellen balanciert werden müssen. SMACC begrenzt deshalb nicht primär den Ziel-SOC, sondern reduziert im Schonladen die Ladeleistung abhängig von der maximalen Zellspannung: Steigt diese über den konfigurierten Grenzwert, wird die Ladeleistung schrittweise reduziert; fällt sie wieder unter den Reset-Wert, wird die Begrenzung aufgehoben. Zusätzlich sollte eine konservative maximale Ladeleistung gesetzt werden, z. B. 3 kW, um den Akku schonender bis 100 % laden und Balancing trotzdem ermöglichen zu können.
+
 ## Danksagung
 Danke an olli_at_work vom Photovoltaikforum ( https://www.photovoltaikforum.com/core/user/158859-olli-at-work/ ) der mir den Tipp zur Begrenzung der Ladeleistung mittels Faktor gegeben hat und mir generell sehr unter die Arme gegriffen hat. 
 
